@@ -1,7 +1,15 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import Lenis from 'lenis';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
+
+export let globalLenis: Lenis | null = null;
 
 export function useLenis() {
+  const lenisRef = useRef<Lenis | null>(null);
+
   useEffect(() => {
     const lenis = new Lenis({
       duration: 1.2,
@@ -13,17 +21,27 @@ export function useLenis() {
       touchMultiplier: 2.0,
     });
 
-    function raf(time: number) {
-      lenis.raf(time);
-      requestAnimationFrame(raf);
-    }
+    lenisRef.current = lenis;
+    globalLenis = lenis;
 
-    const rafId = requestAnimationFrame(raf);
+    // Wire Lenis scroll events directly into GSAP ScrollTrigger
+    lenis.on('scroll', ScrollTrigger.update);
+
+    // Sync Lenis RAF with GSAP's central ticker (time in seconds -> milliseconds)
+    const tickerCallback = (time: number) => {
+      lenis.raf(time * 1000);
+    };
+
+    gsap.ticker.add(tickerCallback);
+    gsap.ticker.lagSmoothing(0);
 
     return () => {
-      cancelAnimationFrame(rafId);
+      gsap.ticker.remove(tickerCallback);
       lenis.destroy();
+      lenisRef.current = null;
+      globalLenis = null;
     };
   }, []);
-}
 
+  return lenisRef;
+}

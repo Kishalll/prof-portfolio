@@ -7,27 +7,16 @@ import { ProjectsCanvas } from './components/projects/ProjectsCanvas';
 import { SkillsCanvas } from './components/skills/SkillsCanvas';
 import { ContactCanvas } from './components/contact/ContactCanvas';
 import { VisitorCursor } from './components/canvas/VisitorCursor';
-import { CursorSwarmEngine } from './components/canvas/CursorSwarmEngine';
+import { ChoreographerProvider, useChoreographer } from './animation/ChoreographerContext';
 
-const ALL_PERSONAS = ['dev-kishal', 'secops', 'ai-rag', 'kernel', 'ui-ux', 'qa-audit', 'reviewer'];
-
-export default function App() {
+function PortfolioAppContent() {
   useLenis();
   const [isGridVisible, setIsGridVisible] = useState(true);
-  const [followingIds, setFollowingIds] = useState<string[]>(ALL_PERSONAS);
-  const [buildKey, setBuildKey] = useState(0);
-
-  const handleReplay = () => {
-    setFollowingIds([]);
-    setBuildKey(prev => prev + 1);
-  };
+  const { replayKey, triggerReplay } = useChoreographer();
 
   return (
     <div className="relative min-h-screen bg-black text-white font-sans selection:bg-kiwi selection:text-black">
-      {/* Collaborative Swarm Follower Cursors (Gradually grows as each cursor finishes its individual component) */}
-      <CursorSwarmEngine followingIds={followingIds} />
-
-      {/* Interactive Visitor Mouse Follower */}
+      {/* Interactive Visitor Mouse Follower (Isolated from autonomous agents) */}
       <VisitorCursor />
 
       {/* Background Dot-Matrix Canvas Grid (Toggleable) */}
@@ -48,43 +37,38 @@ export default function App() {
       <CanvasHeader 
         isGridVisible={isGridVisible}
         onToggleGrid={() => setIsGridVisible(prev => !prev)}
-        onReplayBuild={handleReplay}
+        onReplayBuild={triggerReplay}
       />
 
       {/* MAIN CANVAS BODY */}
       <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 flex flex-col gap-16 py-8">
         {/* HERO SECTION */}
         <HeroBuilderCanvas 
-          key={buildKey}
-          buildKey={buildKey}
-          onFollowChange={setFollowingIds}
+          key={`hero-${replayKey}`}
+          buildKey={replayKey}
         />
 
         {/* ABOUT & ENGINEERING SPEC */}
         <AboutCanvas 
-          key={`about-${buildKey}`}
-          onFollowChange={setFollowingIds}
+          key={`about-${replayKey}`}
         />
 
         {/* PROJECTS SHOWCASE */}
         <ProjectsCanvas 
-          key={`projects-${buildKey}`}
-          buildKey={buildKey}
-          onFollowChange={setFollowingIds}
+          key={`projects-${replayKey}`}
+          buildKey={replayKey}
         />
 
         {/* SKILLS AUTO-LAYOUT TRAYS */}
         <SkillsCanvas 
-          key={`skills-${buildKey}`}
-          buildKey={buildKey}
-          onFollowChange={setFollowingIds}
+          key={`skills-${replayKey}`}
+          buildKey={replayKey}
         />
 
         {/* COLLABORATIVE CONTACT BOARD */}
         <ContactCanvas 
-          key={`contact-${buildKey}`}
-          buildKey={buildKey}
-          onFollowChange={setFollowingIds}
+          key={`contact-${replayKey}`}
+          buildKey={replayKey}
         />
       </main>
 
@@ -100,5 +84,13 @@ export default function App() {
         </div>
       </footer>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ChoreographerProvider rebuildOnReentry={false}>
+      <PortfolioAppContent />
+    </ChoreographerProvider>
   );
 }

@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   Terminal, 
   ShieldCheck, 
@@ -7,32 +6,15 @@ import {
   BookOpen, 
   MessageSquare 
 } from 'lucide-react';
+import { gsap, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition } from '../../animation/motionUtils';
+import { useChoreographer } from '../../animation/ChoreographerContext';
+import { SelectionBox, GuideLines, CursorAgent } from '../canvas/overlays';
 
 interface AboutCanvasProps {
-  onFollowChange?: (followingIds: string[]) => void;
+  buildKey?: number;
 }
 
-interface PillarData {
-  id: string;
-  number: string;
-  title: string;
-  description: string;
-  icon: React.ElementType;
-  color: string;
-  builderPersona: {
-    name: string;
-    action: string;
-    color: string;
-    id: string;
-  };
-  subHelperPersona: {
-    name: string;
-    action: string;
-    color: string;
-  };
-}
-
-const PILLARS_DATA: PillarData[] = [
+const PILLARS_DATA = [
   {
     id: 'ai-pillar',
     number: '01',
@@ -40,17 +22,8 @@ const PILLARS_DATA: PillarData[] = [
     description: 'End-to-end fullstack apps with dense-vector RAG architectures (FAISS, NVIDIA NIM, Ollama) and real-time streaming interfaces.',
     icon: Cpu,
     color: '#CCFF00',
-    builderPersona: {
-      name: 'AI_Agent',
-      action: 'Draw Frame & Mount Vector DB',
-      color: '#DFFF00',
-      id: 'ai-rag',
-    },
-    subHelperPersona: {
-      name: 'Embed_Worker',
-      action: 'Stream FAISS Pipeline',
-      color: '#CCFF00',
-    },
+    personaIndex: 4, // AI_Agent
+    actionLabel: 'Deploy RAG Vector',
   },
   {
     id: 'linux-pillar',
@@ -59,17 +32,8 @@ const PILLARS_DATA: PillarData[] = [
     description: 'Extensive exploration of Wayland/Hyprland dotfiles, Bash automation, Docker containerization, and terminal-first workflows.',
     icon: Terminal,
     color: '#DFFF00',
-    builderPersona: {
-      name: 'Kernel [Linux]',
-      action: 'Draw Frame & Wire Wayland IPC',
-      color: '#DFFF00',
-      id: 'kernel',
-    },
-    subHelperPersona: {
-      name: 'Bash_Worker',
-      action: 'Automate Shell Scripting',
-      color: '#FFFF00',
-    },
+    personaIndex: 5, // Kernel
+    actionLabel: 'Assemble Wayland CLI',
   },
   {
     id: 'sec-pillar',
@@ -78,423 +42,408 @@ const PILLARS_DATA: PillarData[] = [
     description: 'Rigorous security implementations: P-256 ECDSA cryptographic verification, DCT watermarking, phishing intelligence, and session diffing.',
     icon: ShieldCheck,
     color: '#FFFF00',
-    builderPersona: {
-      name: 'SecOps',
-      action: 'Draw Frame & Assert ECDSA',
-      color: '#FFFF00',
-      id: 'secops',
-    },
-    subHelperPersona: {
-      name: 'Crypto_Worker',
-      action: 'Verify Auth Signatures',
-      color: '#FFFFFF',
-    },
+    personaIndex: 2, // SecOps
+    actionLabel: 'Assert P-256 Auth',
   },
 ];
 
-// Sub-Component: Individual Micro-Constructed Pillar Card
-const PillarCardBuilder: React.FC<{
-  pillar: PillarData;
-  isSectionInView: boolean;
-  onComplete: (personaId: string) => void;
-}> = ({ pillar, isSectionInView, onComplete }) => {
-  const [step, setStep] = useState(0);
-  const [titleChars, setTitleChars] = useState(0);
-  const [descChars, setDescChars] = useState(0);
-
-  const Icon = pillar.icon;
-
-  useEffect(() => {
-    if (!isSectionInView) {
-      setStep(0);
-      setTitleChars(0);
-      setDescChars(0);
-      return;
-    }
-
-    // Step 1: Draw empty card frame outline (blank inside)
-    setStep(1);
-
-    // Step 2: Drop icon & number, start typing title letter-by-letter (350ms)
-    let titleInterval: ReturnType<typeof setInterval> | null = null;
-    const tStep2 = setTimeout(() => {
-      setStep(2);
-      let count = 0;
-      titleInterval = setInterval(() => {
-        count += 1;
-        if (count >= pillar.title.length) {
-          setTitleChars(pillar.title.length);
-          if (titleInterval) clearInterval(titleInterval);
-        } else {
-          setTitleChars(count);
-        }
-      }, 30);
-    }, 350);
-
-    // Step 3: Stream description character-by-character (850ms)
-    let descInterval: ReturnType<typeof setInterval> | null = null;
-    const tStep3 = setTimeout(() => {
-      setStep(3);
-      let dCount = 0;
-      descInterval = setInterval(() => {
-        dCount += 4;
-        if (dCount >= pillar.description.length) {
-          setDescChars(pillar.description.length);
-          if (descInterval) clearInterval(descInterval);
-        } else {
-          setDescChars(dCount);
-        }
-      }, 18);
-    }, 850);
-
-    // Step 4: Card completed, release persona to mouse follower flock (1750ms)
-    const tStep4 = setTimeout(() => {
-      setStep(4);
-      setTitleChars(pillar.title.length);
-      setDescChars(pillar.description.length);
-      onComplete(pillar.builderPersona.id);
-    }, 1750);
-
-    return () => {
-      clearTimeout(tStep2);
-      clearTimeout(tStep3);
-      clearTimeout(tStep4);
-      if (titleInterval) clearInterval(titleInterval);
-      if (descInterval) clearInterval(descInterval);
-    };
-  }, [isSectionInView, pillar.title, pillar.description, pillar.builderPersona.id]);
-
-  if (!isSectionInView || step === 0) return null;
-
-  const isBuilding = step >= 1 && step < 4;
-
-  return (
-    <div className="relative min-h-[170px]">
-      {/* 1. CARD FRAME: Empty container drawn open diagonally from top-left */}
-      <motion.div 
-        className="relative p-5 rounded-xl bg-kiwi-surface/80 border border-kiwi-border hover:border-kiwi/40 transition-colors flex flex-col gap-2 shadow-lg origin-top-left overflow-hidden min-h-[160px] h-full"
-        initial={{ scaleX: 0.05, scaleY: 0.1, opacity: 0 }}
-        animate={{ scaleX: 1, scaleY: 1, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 220, damping: 20 }}
-      >
-        {/* Step 1 Cursor: Dragging the blank frame open */}
-        {isBuilding && step === 1 && (
-          <motion.div 
-            className="absolute pointer-events-none z-30 flex flex-col items-start select-none whitespace-nowrap"
-            initial={{ left: '0%', top: '10%' }}
-            animate={{ left: '92%', top: '88%' }}
-            transition={{ type: 'spring', stiffness: 220, damping: 20 }}
-          >
-            <svg className="w-4 h-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]" viewBox="0 0 24 24" fill="none">
-              <path d="M3 1L21 13.5L13.5 15L9.5 23L6.5 21.5L10.5 14L3 1Z" fill={pillar.builderPersona.color} stroke="#000" strokeWidth="1.5" strokeLinejoin="round"/>
-            </svg>
-            <span 
-              className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded shadow-xl bg-[#0A0B08] border ml-2 mt-0.5"
-              style={{ color: pillar.builderPersona.color, borderColor: `${pillar.builderPersona.color}60` }}
-            >
-              {pillar.builderPersona.name} &bull; Draw Pillar Frame
-            </span>
-          </motion.div>
-        )}
-
-        {/* 2. HEADER: Icon Dropped & Title Typed Letter-by-Letter */}
-        {step >= 2 && (
-          <div className="flex items-center justify-between text-xs font-mono">
-            <div className="flex items-center gap-1.5 font-semibold" style={{ color: pillar.color }}>
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: 'spring', stiffness: 350, damping: 22 }}
-              >
-                <Icon size={15} />
-              </motion.div>
-              <span>{pillar.title.slice(0, titleChars)}</span>
-
-              {/* Title typing caret cursor */}
-              {isBuilding && step === 2 && (
-                <span className="inline-block relative ml-1 align-baseline">
-                  <span className="inline-block w-1.5 h-3.5 bg-kiwi animate-pulse align-middle" />
-                  <span className="absolute -top-7 -left-1 pointer-events-none z-30 flex flex-col items-start select-none whitespace-nowrap">
-                    <svg className="w-4 h-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]" viewBox="0 0 24 24" fill="none">
-                      <path d="M3 1L21 13.5L13.5 15L9.5 23L6.5 21.5L10.5 14L3 1Z" fill={pillar.builderPersona.color} stroke="#000" strokeWidth="1.5" strokeLinejoin="round"/>
-                    </svg>
-                    <span 
-                      className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded shadow-xl bg-[#0A0B08] border ml-2 mt-0.5"
-                      style={{ color: pillar.builderPersona.color, borderColor: `${pillar.builderPersona.color}60` }}
-                    >
-                      {pillar.builderPersona.name} &bull; Type Title
-                    </span>
-                  </span>
-                </span>
-              )}
-            </div>
-
-            <motion.span 
-              className="text-[10px] text-zinc-500 font-mono"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              {pillar.number}
-            </motion.span>
-          </div>
-        )}
-
-        {/* 3. DESCRIPTION STREAMED LETTER-BY-LETTER */}
-        {step >= 3 && (
-          <div className="mt-2 min-h-[50px]">
-            <p className="text-xs text-zinc-300 leading-relaxed inline">
-              {pillar.description.slice(0, descChars)}
-
-              {/* Description stream caret cursor */}
-              {isBuilding && step === 3 && (
-                <span className="inline-block relative ml-1 align-baseline">
-                  <span className="inline-block w-1 h-3 bg-zinc-300 animate-pulse align-middle" />
-                  <span className="absolute -top-7 -left-1 pointer-events-none z-30 flex flex-col items-start select-none whitespace-nowrap">
-                    <svg className="w-4 h-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]" viewBox="0 0 24 24" fill="none">
-                      <path d="M3 1L21 13.5L13.5 15L9.5 23L6.5 21.5L10.5 14L3 1Z" fill={pillar.subHelperPersona.color} stroke="#000" strokeWidth="1.5" strokeLinejoin="round"/>
-                    </svg>
-                    <span 
-                      className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded shadow-xl bg-[#0A0B08] border ml-2 mt-0.5"
-                      style={{ color: pillar.subHelperPersona.color, borderColor: `${pillar.subHelperPersona.color}60` }}
-                    >
-                      {pillar.subHelperPersona.name} &bull; Stream Architecture
-                    </span>
-                  </span>
-                </span>
-              )}
-            </p>
-          </div>
-        )}
-      </motion.div>
-    </div>
-  );
-};
-
-export const AboutCanvas: React.FC<AboutCanvasProps> = ({ onFollowChange }) => {
+export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
   const containerRef = useRef<HTMLElement>(null);
-  const isInView = useInView(containerRef, { 
-    amount: 0.2,
-  });
+  const { personaPool, isMobile, prefersReducedMotion, rebuildOnReentry } = useChoreographer();
 
-  const [completedPersonas, setCompletedPersonas] = useState<string[]>([]);
-  const [titleChars, setTitleChars] = useState(0);
-  const [descChars, setDescChars] = useState(0);
+  // Content Element Refs
+  const headerBadgeRef = useRef<HTMLDivElement>(null);
+  const headerTitleRef = useRef<HTMLHeadingElement>(null);
+  const headerDescRef = useRef<HTMLDivElement>(null);
+  const pillarRefs = [useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null)];
+  const pillarNumRefs = [useRef<HTMLSpanElement>(null), useRef<HTMLSpanElement>(null), useRef<HTMLSpanElement>(null)];
+  const pin1Ref = useRef<HTMLDivElement>(null);
+  const pin2Ref = useRef<HTMLDivElement>(null);
 
-  const fullTitle = "Bridging Deep Systems Engineering with Intuitive User Experience";
-  const fullDesc = "I am a 3rd-year B.Tech Computer Science and Engineering student at VIT Chennai. A self-driven developer who explores Linux systems, desktop configurations, and applied AI pipelines outside the classroom, with a commitment to building software that solves genuine problems.";
+  // GuideLines Refs
+  const hLineRef = useRef<HTMLDivElement>(null);
+  const vLineRef = useRef<HTMLDivElement>(null);
+  const rulerRef = useRef<HTMLDivElement>(null);
+
+  // Selection Box Refs
+  const boxHeaderRef = useRef<HTMLDivElement>(null);
+  const boxPillarRefs = [useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null)];
+  const boxPin1Ref = useRef<HTMLDivElement>(null);
+  const boxPin2Ref = useRef<HTMLDivElement>(null);
+
+  // Cursor Agent Refs
+  const cursorHeaderRef = useRef<HTMLDivElement>(null);
+  const cursorPillarRefs = [useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null)];
+  const cursorPin1Ref = useRef<HTMLDivElement>(null);
+  const cursorPin2Ref = useRef<HTMLDivElement>(null);
+
+  // Dimension Labels State
+  const [boxDims, setBoxDims] = useState<Record<string, { width: number; height: number }>>({});
 
   useEffect(() => {
-    // UNBUILD: When About leaves viewport, collapse back to 0
-    if (!isInView) {
-      setCompletedPersonas([]);
-      setTitleChars(0);
-      setDescChars(0);
-      if (onFollowChange) onFollowChange([]);
-      return;
-    }
+    const container = containerRef.current;
+    if (!container) return;
 
-    // SIMULTANEOUS PARALLEL BUILD WITH INDIVIDUAL HANDOFF:
-    setCompletedPersonas([]);
-    setTitleChars(0);
-    setDescChars(0);
-    if (onFollowChange) onFollowChange([]);
+    let isCancelled = false;
 
-    const finished = new Set<string>();
+    const ctx = gsap.context(() => {
+      const initScrollBuild = async () => {
+        await waitForFontsAndLayout();
+        if (isCancelled || !container) return;
 
-    const releasePersonas = (newIds: string[]) => {
-      newIds.forEach(id => finished.add(id));
-      const arr = Array.from(finished);
-      setCompletedPersonas(arr);
-      if (onFollowChange) onFollowChange(arr);
-    };
+        const containerRect = container.getBoundingClientRect();
+        const containerW = containerRect.width || window.innerWidth;
+        const containerH = containerRect.height || 500;
 
-    // Concurrently stream title letter-by-letter with Dev [Kishal] cursor
-    let titleInterval: ReturnType<typeof setInterval> | null = null;
-    let tCount = 0;
-    titleInterval = setInterval(() => {
-      tCount += 1;
-      if (tCount >= fullTitle.length) {
-        setTitleChars(fullTitle.length);
-        if (titleInterval) clearInterval(titleInterval);
-        releasePersonas(['dev-kishal', 'ui-ux']);
-      } else {
-        setTitleChars(tCount);
-      }
-    }, 28);
+        const allContentElements = [
+          headerBadgeRef.current,
+          headerTitleRef.current,
+          headerDescRef.current,
+          ...pillarRefs.map((r) => r.current),
+          pin1Ref.current,
+          pin2Ref.current,
+        ].filter(Boolean) as HTMLElement[];
 
-    // Concurrently stream description letter-by-letter
-    let descInterval: ReturnType<typeof setInterval> | null = null;
-    let dCount = 0;
-    descInterval = setInterval(() => {
-      dCount += 3;
-      if (dCount >= fullDesc.length) {
-        setDescChars(fullDesc.length);
-        if (descInterval) clearInterval(descInterval);
-      } else {
-        setDescChars(dCount);
-      }
-    }, 20);
+        const allBoxes = [
+          boxHeaderRef.current,
+          ...boxPillarRefs.map((r) => r.current),
+          boxPin1Ref.current,
+          boxPin2Ref.current,
+        ].filter(Boolean) as HTMLElement[];
 
-    // Comment pin cards finish at 1500ms -> QA_Audit & Reviewer follow mouse
-    const tPins = setTimeout(() => {
-      releasePersonas(['qa-audit', 'reviewer']);
-    }, 1500);
+        const allCursors = [
+          cursorHeaderRef.current,
+          ...cursorPillarRefs.map((r) => r.current),
+          cursorPin1Ref.current,
+          cursorPin2Ref.current,
+        ].filter(Boolean) as HTMLElement[];
+
+        if (prefersReducedMotion) {
+          gsap.set(allContentElements, { autoAlpha: 1, y: 0, filter: 'none', clipPath: 'none' });
+          gsap.set(allBoxes, { autoAlpha: 0 });
+          gsap.set(allCursors, { autoAlpha: 0 });
+          return;
+        }
+
+        // Keep content in layout but hidden initially
+        gsap.set(allContentElements, { autoAlpha: 0 });
+        gsap.set(allBoxes, { autoAlpha: 0 });
+        gsap.set([hLineRef.current, vLineRef.current], { autoAlpha: 0 });
+
+        // Measure true relative bounds
+        const targets = [
+          { key: 'header', el: headerTitleRef.current, box: boxHeaderRef.current, cursor: cursorHeaderRef.current, delay: 0.0, isHeadline: true },
+          { key: 'p1', el: pillarRefs[0].current, box: boxPillarRefs[0].current, cursor: cursorPillarRefs[0].current, delay: 0.15, isHeadline: false },
+          { key: 'p2', el: pillarRefs[1].current, box: boxPillarRefs[1].current, cursor: cursorPillarRefs[1].current, delay: 0.25, isHeadline: false },
+          { key: 'p3', el: pillarRefs[2].current, box: boxPillarRefs[2].current, cursor: cursorPillarRefs[2].current, delay: 0.35, isHeadline: false },
+          { key: 'pin1', el: pin1Ref.current, box: boxPin1Ref.current, cursor: cursorPin1Ref.current, delay: 0.45, isHeadline: false },
+          { key: 'pin2', el: pin2Ref.current, box: boxPin2Ref.current, cursor: cursorPin2Ref.current, delay: 0.55, isHeadline: false },
+        ];
+
+        const calculatedDims: Record<string, { width: number; height: number }> = {};
+        const measured = targets.map((t) => {
+          if (!t.el) return null;
+          const bounds = getRelativeBounds(t.el, container);
+          calculatedDims[t.key] = { width: bounds.width, height: bounds.height };
+          const start = getRandomEdgePosition(containerW, containerH);
+          return { ...t, bounds, start };
+        }).filter(Boolean) as (typeof targets[0] & { bounds: { x: number; y: number; width: number; height: number }; start: { x: number; y: number } })[];
+
+        setBoxDims(calculatedDims);
+
+        // Position cursors at initial off-screen edge origins
+        measured.forEach((t) => {
+          if (t.cursor) {
+            gsap.set(t.cursor, { x: t.start.x, y: t.start.y, autoAlpha: 1 });
+          }
+        });
+
+        // Build Master ScrollTrigger Timeline
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: container,
+            start: 'top 75%',
+            once: !rebuildOnReentry,
+          },
+        });
+
+        // Animate Red Vertical Ruler Line
+        if (rulerRef.current && !isMobile) {
+          tl.fromTo(
+            rulerRef.current,
+            { scaleY: 0, transformOrigin: 'top center', autoAlpha: 0 },
+            { scaleY: 1, autoAlpha: 0.8, duration: 0.7, ease: 'power2.out' },
+            0.0
+          );
+        }
+
+        // Header Badge & Desc
+        if (headerBadgeRef.current) {
+          tl.fromTo(headerBadgeRef.current, { autoAlpha: 0, y: -6 }, { autoAlpha: 1, y: 0, duration: 0.4 }, 0.0);
+        }
+        if (headerDescRef.current) {
+          tl.fromTo(headerDescRef.current, { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: 0.5 }, 0.25);
+        }
+
+        // Build Elements in Parallel with 60-80ms Stagger
+        measured.forEach((t) => {
+          const { el, box, cursor, bounds, delay, isHeadline } = t;
+
+          // 1. Cursor enters along curved path
+          if (cursor) {
+            tl.to(
+              cursor,
+              {
+                x: bounds.x + Math.min(16, bounds.width * 0.1),
+                y: bounds.y + Math.min(16, bounds.height * 0.2),
+                duration: 0.65,
+                ease: 'back.out(1.4)',
+              },
+              delay
+            );
+          }
+
+          // 2. Selection Box expands with 8 handles & dimension tag
+          if (box) {
+            tl.fromTo(
+              box,
+              {
+                x: bounds.x,
+                y: bounds.y,
+                width: 24,
+                height: 16,
+                autoAlpha: 1,
+              },
+              {
+                x: bounds.x,
+                y: bounds.y,
+                width: bounds.width,
+                height: bounds.height,
+                duration: 0.5,
+                ease: 'expo.out',
+              },
+              delay + 0.2
+            );
+
+            // Snap guide lines
+            if (hLineRef.current && vLineRef.current && !isMobile) {
+              tl.set(hLineRef.current, { top: bounds.y, autoAlpha: 0.7 }, delay + 0.2);
+              tl.set(vLineRef.current, { left: bounds.x, autoAlpha: 0.7 }, delay + 0.2);
+              tl.to([hLineRef.current, vLineRef.current], { autoAlpha: 0, duration: 0.25 }, delay + 0.45);
+            }
+
+            // Selection Box fades out
+            tl.to(
+              box,
+              {
+                autoAlpha: 0,
+                duration: 0.3,
+                ease: 'power2.inOut',
+              },
+              delay + 0.75
+            );
+          }
+
+          // 3. Content Reveals inside box
+          if (el) {
+            if (isHeadline) {
+              tl.fromTo(
+                el,
+                { autoAlpha: 0, filter: 'blur(8px)', y: 12, clipPath: 'inset(0 0 100% 0)' },
+                { autoAlpha: 1, filter: 'blur(0px)', y: 0, clipPath: 'inset(0 0 0% 0)', duration: 0.7, ease: 'power3.out' },
+                delay + 0.35
+              );
+            } else {
+              tl.fromTo(
+                el,
+                { autoAlpha: 0, y: 12 },
+                { autoAlpha: 1, y: 0, duration: 0.45, ease: 'power2.out' },
+                delay + 0.35
+              );
+            }
+          }
+
+          // 4. Cursor drifts gently to edge
+          if (cursor) {
+            const idleOffset = getRandomEdgePosition(containerW, containerH);
+            tl.to(
+              cursor,
+              {
+                x: bounds.x + (Math.random() - 0.5) * 40,
+                y: bounds.y + (Math.random() - 0.5) * 40,
+                duration: 0.45,
+                ease: 'power1.out',
+              },
+              delay + 0.75
+            );
+            tl.to(
+              cursor,
+              {
+                x: idleOffset.x * 0.85,
+                y: idleOffset.y * 0.85,
+                opacity: 0.3,
+                duration: 1.5,
+                ease: 'power2.out',
+              },
+              delay + 1.2
+            );
+          }
+        });
+
+        // 5. Scramble numbers for pillars ('01', '02', '03')
+        pillarNumRefs.forEach((nr, idx) => {
+          if (nr.current) {
+            tl.to(
+              nr.current,
+              {
+                scrambleText: {
+                  text: `0${idx + 1}`,
+                  chars: '0123456789',
+                  speed: 0.5,
+                },
+                duration: 0.7,
+                ease: 'none',
+              },
+              0.3 + idx * 0.1
+            );
+          }
+        });
+      };
+
+      initScrollBuild();
+    }, container);
 
     return () => {
-      clearTimeout(tPins);
-      if (titleInterval) clearInterval(titleInterval);
-      if (descInterval) clearInterval(descInterval);
+      isCancelled = true;
+      ctx.revert();
     };
-  }, [isInView]);
-
-  const handlePillarComplete = (personaId: string) => {
-    setCompletedPersonas(prev => {
-      const next = Array.from(new Set([...prev, personaId]));
-      if (onFollowChange) onFollowChange(next);
-      return next;
-    });
-  };
+  }, [buildKey, prefersReducedMotion, isMobile, rebuildOnReentry]);
 
   return (
     <section 
       ref={containerRef}
-      className="relative pt-8 pb-12 sm:pt-12 sm:pb-16 min-h-[480px]" 
+      className="relative pt-8 pb-12 sm:pt-12 sm:pb-16 min-h-[480px] w-full" 
       id="about"
     >
-      {/* NO OUTER BOX - CLEAN DIRECT CANVAS PRESENTATION */}
+      {/* 1. GUIDELINES OVERLAY LAYER */}
+      <GuideLines
+        showRuler={!isMobile}
+        rulerOffset={isMobile ? 12 : 28}
+        hLineRef={hLineRef}
+        vLineRef={vLineRef}
+        rulerRef={rulerRef}
+      />
+
+      {/* 2. SELECTION BOXES LAYER */}
+      <SelectionBox ref={boxHeaderRef} dimensions={boxDims['header']} />
+      <SelectionBox ref={boxPillarRefs[0]} dimensions={boxDims['p1']} />
+      <SelectionBox ref={boxPillarRefs[1]} dimensions={boxDims['p2']} />
+      <SelectionBox ref={boxPillarRefs[2]} dimensions={boxDims['p3']} />
+      <SelectionBox ref={boxPin1Ref} dimensions={boxDims['pin1']} />
+      <SelectionBox ref={boxPin2Ref} dimensions={boxDims['pin2']} />
+
+      {/* 3. AUTONOMOUS CURSOR AGENTS LAYER */}
+      <CursorAgent ref={cursorHeaderRef} persona={personaPool[0] || { id: 'dev', name: 'Dev [Kishal]', role: 'Lead', color: '#CCFF00' }} actionLabel="Select Title" />
+      <CursorAgent ref={cursorPillarRefs[0]} persona={personaPool[4] || { id: 'ai', name: 'AI_Agent', role: 'RAG', color: '#DFFF00' }} actionLabel="Deploy Vector" />
+      <CursorAgent ref={cursorPillarRefs[1]} persona={personaPool[5] || { id: 'kernel', name: 'Kernel', role: 'Systems', color: '#DFFF00' }} actionLabel="Build CLI" />
+      <CursorAgent ref={cursorPillarRefs[2]} persona={personaPool[2] || { id: 'secops', name: 'SecOps', role: 'Security', color: '#FFFF00' }} actionLabel="Verify Auth" />
+      <CursorAgent ref={cursorPin1Ref} persona={personaPool[1] || { id: 'ui', name: 'UI_Design', role: 'Philosophy', color: '#CCFF00' }} actionLabel="Mount Pin" />
+      <CursorAgent ref={cursorPin2Ref} persona={personaPool[6] || { id: 'reviewer', name: 'Reviewer', role: 'Audit', color: '#FFFFFF' }} actionLabel="Verify Spec" />
+
+      {/* 4. MAIN CONTENT DOM (Kept in layout; measured then revealed) */}
       <div className="flex flex-col gap-8 relative z-10">
         
-        {/* PIECE 1: HEADER & BIO SUMMARY (Typed Letter-by-Letter by Dev [Kishal]) */}
-        {isInView && (
-          <div className="space-y-3 max-w-3xl min-h-[140px]">
-            <div className="inline-flex items-center gap-2 text-xs font-mono text-kiwi">
-              <BookOpen size={14} />
-              <span>Engineering Background &bull; VIT Chennai</span>
-            </div>
+        {/* HEADER & BIO SUMMARY */}
+        <div className="space-y-3 max-w-3xl min-h-[140px]">
+          <div ref={headerBadgeRef} className="inline-flex items-center gap-2 text-xs font-mono text-kiwi">
+            <BookOpen size={14} />
+            <span>Engineering Background &bull; VIT Chennai</span>
+          </div>
 
-            {/* Title typed letter by letter */}
-            <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white leading-tight font-sans inline-block">
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-kiwi via-kiwi-yellow to-kiwi-chartreuse">
-                {fullTitle.slice(0, titleChars)}
-              </span>
+          <h2 
+            ref={headerTitleRef}
+            className="text-3xl sm:text-5xl font-bold tracking-tight text-white leading-tight font-sans inline-block"
+          >
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-kiwi via-kiwi-yellow to-kiwi-chartreuse">
+              Bridging Deep Systems Engineering with Intuitive User Experience
+            </span>
+          </h2>
 
-              {/* Dev Kishal cursor riding the typing caret */}
-              {!completedPersonas.includes('dev-kishal') && (
-                <span className="inline-block relative ml-1 align-baseline">
-                  <span className="inline-block w-2 sm:w-2.5 h-6 sm:h-10 bg-kiwi animate-pulse align-middle" />
-                  <span className="absolute -top-8 -left-1 pointer-events-none z-30 flex flex-col items-start select-none whitespace-nowrap">
-                    <svg className="w-4 h-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]" viewBox="0 0 24 24" fill="none">
-                      <path d="M3 1L21 13.5L13.5 15L9.5 23L6.5 21.5L10.5 14L3 1Z" fill="#CCFF00" stroke="#000000" strokeWidth="1.5" strokeLinejoin="round"/>
-                    </svg>
-                    <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded shadow-xl bg-[#0A0B08] text-kiwi border border-kiwi/50 ml-2 mt-0.5">
-                      Dev [Kishal] &bull; Typing
-                    </span>
+          <div ref={headerDescRef} className="mt-2 min-h-[50px]">
+            <p className="text-zinc-300 text-sm sm:text-base md:text-lg leading-relaxed inline-block">
+              I am a 3rd-year B.Tech Computer Science and Engineering student at VIT Chennai. A self-driven developer who explores Linux systems, desktop configurations, and applied AI pipelines outside the classroom, with a commitment to building software that solves genuine problems.
+            </p>
+          </div>
+        </div>
+
+        {/* THE 3 CONTENT PILLAR BOXES */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 min-h-[160px]">
+          {PILLARS_DATA.map((pillar, idx) => {
+            const Icon = pillar.icon;
+            return (
+              <div
+                key={pillar.id}
+                ref={pillarRefs[idx]}
+                className="relative p-5 rounded-xl bg-kiwi-surface/80 border border-kiwi-border hover:border-kiwi/40 transition-colors flex flex-col justify-between gap-3 shadow-lg min-h-[160px] group"
+              >
+                <div className="flex items-center justify-between text-xs font-mono">
+                  <div className="flex items-center gap-1.5 font-semibold" style={{ color: pillar.color }}>
+                    <Icon size={15} />
+                    <span>{pillar.title}</span>
+                  </div>
+
+                  <span ref={pillarNumRefs[idx]} className="text-[10px] text-zinc-500 font-mono">
+                    {pillar.number}
                   </span>
-                </span>
-              )}
-            </h2>
+                </div>
 
-            {/* Description typed letter by letter */}
-            <div className="mt-2 min-h-[50px]">
-              <p className="text-zinc-300 text-sm sm:text-base md:text-lg leading-relaxed inline">
-                {fullDesc.slice(0, descChars)}
+                <div className="mt-1">
+                  <p className="text-xs text-zinc-300 leading-relaxed">
+                    {pillar.description}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* COLLABORATIVE COMMENT PIN BOXES */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 min-h-[90px]">
+          {/* Comment 1: Philosophy */}
+          <div 
+            ref={pin1Ref}
+            className="p-4 rounded-xl bg-black/60 border border-kiwi/30 flex items-start gap-3 shadow-md"
+          >
+            <MessageSquare size={16} className="text-kiwi shrink-0 mt-0.5" />
+            <div className="text-xs font-mono">
+              <div className="text-kiwi font-semibold flex items-center gap-2">
+                <span>Dev [Kishal]</span>
+                <span className="text-[10px] text-zinc-500">&bull; Core Philosophy</span>
+              </div>
+              <p className="text-zinc-300 mt-1.5 leading-relaxed">
+                "Build things that actually matter with smooth, intuitive UX. Fun doesn't mean sloppy; precision is earned through code."
               </p>
             </div>
           </div>
-        )}
 
-        {/* PIECE 2: THE 3 CONTENT PILLAR BOXES (Each Drawn Blank First, Then Built Internally by Cursors) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 min-h-[160px]">
-          {PILLARS_DATA.map((pillar) => (
-            <PillarCardBuilder
-              key={pillar.id}
-              pillar={pillar}
-              isSectionInView={isInView}
-              onComplete={handlePillarComplete}
-            />
-          ))}
-        </div>
-
-        {/* PIECE 3: COLLABORATIVE COMMENT PIN BOXES (Drawn Blank First, Then Quotes Typed) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 min-h-[90px]">
-          {/* Comment 1: Reviewer drags open card */}
-          <div className="relative">
-            {isInView && (
-              <motion.div 
-                className="relative p-4 rounded-xl bg-black/60 border border-kiwi/30 flex items-start gap-3 shadow-md origin-left overflow-hidden"
-                initial={{ scaleX: 0, opacity: 0 }}
-                animate={{ scaleX: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-              >
-                <MessageSquare size={16} className="text-kiwi shrink-0 mt-0.5" />
-                <div className="text-xs font-mono">
-                  <div className="text-kiwi font-semibold flex items-center gap-2">
-                    <span>Dev [Kishal]</span>
-                    <span className="text-[10px] text-zinc-500">&bull; Core Philosophy</span>
-                  </div>
-                  <p className="text-zinc-300 mt-1.5 leading-relaxed">
-                    "Build things that actually matter with smooth, intuitive UX. Fun doesn't mean sloppy; precision is earned through code."
-                  </p>
-                </div>
-              </motion.div>
-            )}
-
-            {!completedPersonas.includes('reviewer') && isInView && (
-              <motion.div 
-                className="absolute -top-6 pointer-events-none z-30 flex flex-col items-start select-none whitespace-nowrap"
-                initial={{ left: '0%' }}
-                animate={{ left: '96%' }}
-                transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-              >
-                <svg className="w-4 h-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]" viewBox="0 0 24 24" fill="none">
-                  <path d="M3 1L21 13.5L13.5 15L9.5 23L6.5 21.5L10.5 14L3 1Z" fill="#FFFFFF" stroke="#000000" strokeWidth="1.5" strokeLinejoin="round"/>
-                </svg>
-                <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded shadow-xl bg-[#0A0B08] text-white border border-white/50 ml-2 mt-0.5">
-                  Reviewer &bull; Pull Pin Box
-                </span>
-              </motion.div>
-            )}
-          </div>
-
-          {/* Comment 2: QA_Audit drags open card */}
-          <div className="relative">
-            {isInView && (
-              <motion.div 
-                className="relative p-4 rounded-xl bg-black/60 border border-kiwi-yellow/30 flex items-start gap-3 shadow-md origin-left overflow-hidden"
-                initial={{ scaleX: 0, opacity: 0 }}
-                animate={{ scaleX: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-              >
-                <MessageSquare size={16} className="text-kiwi-yellow shrink-0 mt-0.5" />
-                <div className="text-xs font-mono">
-                  <div className="text-kiwi-yellow font-semibold flex items-center gap-2">
-                    <span>SecOps</span>
-                    <span className="text-[10px] text-zinc-500">&bull; Verification Audit</span>
-                  </div>
-                  <p className="text-zinc-300 mt-1.5 leading-relaxed">
-                    "Security is woven directly into the application architecture, not added as a superficial decoration."
-                  </p>
-                </div>
-              </motion.div>
-            )}
-
-            {!completedPersonas.includes('qa-audit') && isInView && (
-              <motion.div 
-                className="absolute -top-6 pointer-events-none z-30 flex flex-col items-start select-none whitespace-nowrap"
-                initial={{ left: '0%' }}
-                animate={{ left: '96%' }}
-                transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-              >
-                <svg className="w-4 h-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]" viewBox="0 0 24 24" fill="none">
-                  <path d="M3 1L21 13.5L13.5 15L9.5 23L6.5 21.5L10.5 14L3 1Z" fill="#FFFF00" stroke="#000000" strokeWidth="1.5" strokeLinejoin="round"/>
-                </svg>
-                <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded shadow-xl bg-[#0A0B08] text-[#FFFF00] border border-[#FFFF00]/50 ml-2 mt-0.5">
-                  QA_Audit &bull; Pull Pin Box
-                </span>
-              </motion.div>
-            )}
+          {/* Comment 2: Audit */}
+          <div 
+            ref={pin2Ref}
+            className="p-4 rounded-xl bg-black/60 border border-kiwi-yellow/30 flex items-start gap-3 shadow-md"
+          >
+            <MessageSquare size={16} className="text-kiwi-yellow shrink-0 mt-0.5" />
+            <div className="text-xs font-mono">
+              <div className="text-kiwi-yellow font-semibold flex items-center gap-2">
+                <span>SecOps</span>
+                <span className="text-[10px] text-zinc-500">&bull; Verification Audit</span>
+              </div>
+              <p className="text-zinc-300 mt-1.5 leading-relaxed">
+                "Security is woven directly into the application architecture, not added as a superficial decoration."
+              </p>
+            </div>
           </div>
         </div>
+
       </div>
     </section>
   );

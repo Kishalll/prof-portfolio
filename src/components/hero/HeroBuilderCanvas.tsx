@@ -1,5 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { motion, useInView } from 'framer-motion';
+import React, { useEffect, useRef, useState } from 'react';
 import { 
   ArrowUpRight, 
   Github, 
@@ -8,414 +7,517 @@ import {
   Lock, 
   CheckCircle2 
 } from 'lucide-react';
+import { gsap, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition } from '../../animation/motionUtils';
+import { useChoreographer } from '../../animation/ChoreographerContext';
+import { SelectionBox, GuideLines, CursorAgent } from '../canvas/overlays';
 
 interface HeroBuilderCanvasProps {
-  onFollowChange?: (followingIds: string[]) => void;
   buildKey?: number;
 }
 
 export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({ 
-  onFollowChange,
   buildKey = 0,
 }) => {
   const containerRef = useRef<HTMLElement>(null);
-  const isInView = useInView(containerRef, { 
-    amount: 0.2, 
-  });
+  const { personaPool, isMobile, prefersReducedMotion } = useChoreographer();
 
-  const [isRendered, setIsRendered] = useState(false);
-  const [completedPersonas, setCompletedPersonas] = useState<string[]>([]);
-  const [headlineChars, setHeadlineChars] = useState(0);
-  const [bioChars, setBioChars] = useState(0);
+  // Content Element Refs
+  const badge1Ref = useRef<HTMLDivElement>(null);
+  const badge2Ref = useRef<HTMLDivElement>(null);
+  const badge3Ref = useRef<HTMLDivElement>(null);
+  const headlineRef = useRef<HTMLHeadingElement>(null);
+  const bioRef = useRef<HTMLParagraphElement>(null);
+  const cta1Ref = useRef<HTMLDivElement>(null);
+  const cta2Ref = useRef<HTMLDivElement>(null);
+  const lockRef = useRef<HTMLDivElement>(null);
+  const specDividerRef = useRef<HTMLDivElement>(null);
+  const specGridRef = useRef<HTMLDivElement>(null);
 
-  const fullHeadline = "Full-Stack Developer & Systems Engineer";
-  const fullBio = "Hey, I'm Kishal P. I build full-stack systems, threat detection architectures, and applied AI/RAG pipelines with rigorous precision and intuitive user experience.";
+  // Stat Number Scramble Target Refs
+  const statNum1Ref = useRef<HTMLSpanElement>(null);
+  const statNum2Ref = useRef<HTMLSpanElement>(null);
+  const statNum3Ref = useRef<HTMLSpanElement>(null);
+  const statNum4Ref = useRef<HTMLSpanElement>(null);
+
+  // GuideLines Refs
+  const hLineRef = useRef<HTMLDivElement>(null);
+  const vLineRef = useRef<HTMLDivElement>(null);
+  const rulerRef = useRef<HTMLDivElement>(null);
+
+  // Selection Box Refs (1 per target element)
+  const boxBadge1Ref = useRef<HTMLDivElement>(null);
+  const boxBadge2Ref = useRef<HTMLDivElement>(null);
+  const boxBadge3Ref = useRef<HTMLDivElement>(null);
+  const boxHeadlineRef = useRef<HTMLDivElement>(null);
+  const boxBioRef = useRef<HTMLDivElement>(null);
+  const boxCta1Ref = useRef<HTMLDivElement>(null);
+  const boxCta2Ref = useRef<HTMLDivElement>(null);
+  const boxLockRef = useRef<HTMLDivElement>(null);
+  const boxSpecRef = useRef<HTMLDivElement>(null);
+
+  // Cursor Agent Refs (1 per target element)
+  const cursorBadge1Ref = useRef<HTMLDivElement>(null);
+  const cursorBadge2Ref = useRef<HTMLDivElement>(null);
+  const cursorBadge3Ref = useRef<HTMLDivElement>(null);
+  const cursorHeadlineRef = useRef<HTMLDivElement>(null);
+  const cursorBioRef = useRef<HTMLDivElement>(null);
+  const cursorCta1Ref = useRef<HTMLDivElement>(null);
+  const cursorCta2Ref = useRef<HTMLDivElement>(null);
+  const cursorLockRef = useRef<HTMLDivElement>(null);
+  const cursorSpecRef = useRef<HTMLDivElement>(null);
+
+  // Dimensions state for labels
+  const [boxDims, setBoxDims] = useState<Record<string, { width: number; height: number }>>({});
 
   useEffect(() => {
-    // UNBUILD: When section leaves viewport, reset all states
-    if (!isInView) {
-      setIsRendered(false);
-      setCompletedPersonas([]);
-      setHeadlineChars(0);
-      setBioChars(0);
-      if (onFollowChange) onFollowChange([]);
-      return;
-    }
+    const container = containerRef.current;
+    if (!container) return;
 
-    // SIMULTANEOUS PARALLEL BUILD WITH INDIVIDUAL HANDOFF:
-    setIsRendered(true);
-    setCompletedPersonas([]);
-    setHeadlineChars(0);
-    setBioChars(0);
-    if (onFollowChange) onFollowChange([]);
+    let isCancelled = false;
 
-    const finished = new Set<string>();
+    // Use gsap.context so all tweens, timelines, and listeners revert cleanly on unmount/replay
+    const ctx = gsap.context(() => {
+      const runBuild = async () => {
+        // Wait for fonts to be ready and layout stabilized
+        await waitForFontsAndLayout();
+        if (isCancelled || !container) return;
 
-    const releasePersonas = (newIds: string[]) => {
-      newIds.forEach(id => finished.add(id));
-      const arr = Array.from(finished);
-      setCompletedPersonas(arr);
-      if (onFollowChange) onFollowChange(arr);
-    };
+        const containerRect = container.getBoundingClientRect();
+        const containerW = containerRect.width || window.innerWidth;
+        const containerH = containerRect.height || 600;
 
-    // Concurrently stream headline letter-by-letter with UI_Design cursor (paced for clarity)
-    let headlineInterval: ReturnType<typeof setInterval> | null = null;
-    let hCount = 0;
-    headlineInterval = setInterval(() => {
-      hCount += 1;
-      if (hCount >= fullHeadline.length) {
-        setHeadlineChars(fullHeadline.length);
-        if (headlineInterval) clearInterval(headlineInterval);
-        // UI_Design finishes typing headline and immediately follows mouse
-        releasePersonas(['ui-ux']);
-      } else {
-        setHeadlineChars(hCount);
-      }
-    }, 32);
+        const contentElements = [
+          badge1Ref.current,
+          badge2Ref.current,
+          badge3Ref.current,
+          headlineRef.current,
+          bioRef.current,
+          cta1Ref.current,
+          cta2Ref.current,
+          lockRef.current,
+          specDividerRef.current,
+          specGridRef.current,
+        ].filter(Boolean) as HTMLElement[];
 
-    // Concurrently stream bio letter-by-letter with Reviewer cursor (paced for clarity)
-    let bioInterval: ReturnType<typeof setInterval> | null = null;
-    let bCount = 0;
-    bioInterval = setInterval(() => {
-      bCount += 2;
-      if (bCount >= fullBio.length) {
-        setBioChars(fullBio.length);
-        if (bioInterval) clearInterval(bioInterval);
-        // Reviewer finishes typing bio and immediately follows mouse
-        releasePersonas(['reviewer']);
-      } else {
-        setBioChars(bCount);
-      }
-    }, 24);
+        const selectionBoxes = [
+          boxBadge1Ref.current,
+          boxBadge2Ref.current,
+          boxBadge3Ref.current,
+          boxHeadlineRef.current,
+          boxBioRef.current,
+          boxCta1Ref.current,
+          boxCta2Ref.current,
+          boxLockRef.current,
+          boxSpecRef.current,
+        ].filter(Boolean) as HTMLElement[];
 
-    // Task 1: Badges snap into place at 600ms -> Dev, SecOps, AI_Agent immediately follow mouse!
-    const tBadges = setTimeout(() => {
-      releasePersonas(['dev-kishal', 'secops', 'ai-rag']);
-    }, 600);
+        const cursors = [
+          cursorBadge1Ref.current,
+          cursorBadge2Ref.current,
+          cursorBadge3Ref.current,
+          cursorHeadlineRef.current,
+          cursorBioRef.current,
+          cursorCta1Ref.current,
+          cursorCta2Ref.current,
+          cursorLockRef.current,
+          cursorSpecRef.current,
+        ].filter(Boolean) as HTMLElement[];
 
-    // Task 2: CTA buttons finish stretching at 950ms -> Kernel immediately follows mouse!
-    const tCtas = setTimeout(() => {
-      releasePersonas(['kernel']);
-    }, 950);
+        // Handle prefers-reduced-motion: reveal all content immediately with zero overlays
+        if (prefersReducedMotion) {
+          gsap.set(contentElements, { autoAlpha: 1, y: 0, filter: 'none', clipPath: 'none' });
+          gsap.set(selectionBoxes, { autoAlpha: 0 });
+          gsap.set(cursors, { autoAlpha: 0 });
+          return;
+        }
 
-    // Task 3: Spec ruler drawn and columns stamped at 1250ms -> QA_Audit immediately follows mouse!
-    const tSpec = setTimeout(() => {
-      releasePersonas(['qa-audit']);
-    }, 1250);
+        // 1. Initial State: Content is in layout but invisible (autoAlpha: 0)
+        gsap.set(contentElements, { autoAlpha: 0 });
+        gsap.set(selectionBoxes, { autoAlpha: 0 });
+        gsap.set([hLineRef.current, vLineRef.current], { autoAlpha: 0 });
+
+        // Measure true relative bounds for each target
+        const targets = [
+          { key: 'badge1', el: badge1Ref.current, box: boxBadge1Ref.current, cursor: cursorBadge1Ref.current, delay: 0.0, isHeadline: false },
+          { key: 'badge2', el: badge2Ref.current, box: boxBadge2Ref.current, cursor: cursorBadge2Ref.current, delay: 0.06, isHeadline: false },
+          { key: 'badge3', el: badge3Ref.current, box: boxBadge3Ref.current, cursor: cursorBadge3Ref.current, delay: 0.12, isHeadline: false },
+          { key: 'headline', el: headlineRef.current, box: boxHeadlineRef.current, cursor: cursorHeadlineRef.current, delay: 0.20, isHeadline: true },
+          { key: 'bio', el: bioRef.current, box: boxBioRef.current, cursor: cursorBioRef.current, delay: 0.30, isHeadline: false },
+          { key: 'cta1', el: cta1Ref.current, box: boxCta1Ref.current, cursor: cursorCta1Ref.current, delay: 0.40, isHeadline: false },
+          { key: 'cta2', el: cta2Ref.current, box: boxCta2Ref.current, cursor: cursorCta2Ref.current, delay: 0.46, isHeadline: false },
+          { key: 'lock', el: lockRef.current, box: boxLockRef.current, cursor: cursorLockRef.current, delay: 0.52, isHeadline: false },
+          { key: 'spec', el: specGridRef.current, box: boxSpecRef.current, cursor: cursorSpecRef.current, delay: 0.60, isHeadline: false },
+        ];
+
+        const calculatedDims: Record<string, { width: number; height: number }> = {};
+        const measuredTargets = targets.map((t) => {
+          if (!t.el) return null;
+          const bounds = getRelativeBounds(t.el, container);
+          calculatedDims[t.key] = { width: bounds.width, height: bounds.height };
+          const start = getRandomEdgePosition(containerW, containerH);
+          return { ...t, bounds, start };
+        }).filter(Boolean) as (typeof targets[0] & { bounds: { x: number; y: number; width: number; height: number }; start: { x: number; y: number } })[];
+
+        setBoxDims(calculatedDims);
+
+        // Position cursors at initial off-screen edge origins
+        measuredTargets.forEach((t) => {
+          if (t.cursor) {
+            gsap.set(t.cursor, {
+              x: t.start.x,
+              y: t.start.y,
+              autoAlpha: 1,
+            });
+          }
+        });
+
+        // 2. Master Intro Construction Timeline
+        const masterTl = gsap.timeline();
+
+        // Animate Red Vertical Ruler Line (Reference alignment near left edge)
+        if (rulerRef.current && !isMobile) {
+          masterTl.fromTo(
+            rulerRef.current,
+            { scaleY: 0, transformOrigin: 'top center', autoAlpha: 0 },
+            { scaleY: 1, autoAlpha: 0.8, duration: 0.8, ease: 'power2.out' },
+            0.0
+          );
+        }
+
+        // Animate Each Target Element Concurrently with 40-80ms Stagger
+        measuredTargets.forEach((t) => {
+          const { el, box, cursor, bounds, delay, isHeadline } = t;
+
+          // A. Cursor travels along curved path to target bounds with slight overshoot
+          if (cursor) {
+            masterTl.to(
+              cursor,
+              {
+                x: bounds.x + Math.min(16, bounds.width * 0.1),
+                y: bounds.y + Math.min(16, bounds.height * 0.2),
+                duration: 0.7,
+                ease: 'back.out(1.4)',
+              },
+              delay
+            );
+          }
+
+          // B. Selection Box starts small near cursor and resizes to bounds
+          if (box) {
+            masterTl.fromTo(
+              box,
+              {
+                x: bounds.x,
+                y: bounds.y,
+                width: 28,
+                height: 18,
+                autoAlpha: 1,
+              },
+              {
+                x: bounds.x,
+                y: bounds.y,
+                width: bounds.width,
+                height: bounds.height,
+                duration: 0.55,
+                ease: 'expo.out',
+              },
+              delay + 0.22
+            );
+
+            // Alignment Snap Guide Lines flash at bounds edges
+            if (hLineRef.current && vLineRef.current && !isMobile) {
+              masterTl.set(hLineRef.current, { top: bounds.y, autoAlpha: 0.7 }, delay + 0.22);
+              masterTl.set(vLineRef.current, { left: bounds.x, autoAlpha: 0.7 }, delay + 0.22);
+              masterTl.to([hLineRef.current, vLineRef.current], { autoAlpha: 0, duration: 0.25 }, delay + 0.5);
+            }
+
+            // Selection Box fades out once content reveals
+            masterTl.to(
+              box,
+              {
+                autoAlpha: 0,
+                duration: 0.35,
+                ease: 'power2.inOut',
+              },
+              delay + 0.85
+            );
+          }
+
+          // C. Content Reveals inside the box
+          if (el) {
+            if (isHeadline) {
+              // Heading masked blur-to-sharp effect
+              masterTl.fromTo(
+                el,
+                {
+                  autoAlpha: 0,
+                  filter: 'blur(8px)',
+                  y: 14,
+                  clipPath: 'inset(0 0 100% 0)',
+                },
+                {
+                  autoAlpha: 1,
+                  filter: 'blur(0px)',
+                  y: 0,
+                  clipPath: 'inset(0 0 0% 0)',
+                  duration: 0.75,
+                  ease: 'power3.out',
+                },
+                delay + 0.45
+              );
+            } else {
+              // Clean alpha & y reveal for badges, bio, CTAs
+              masterTl.fromTo(
+                el,
+                {
+                  autoAlpha: 0,
+                  y: 10,
+                },
+                {
+                  autoAlpha: 1,
+                  y: 0,
+                  duration: 0.5,
+                  ease: 'power2.out',
+                },
+                delay + 0.45
+              );
+            }
+          }
+
+          // D. Cursor idles & drifts gracefully toward edge (does NOT follow visitor mouse)
+          if (cursor) {
+            const idleOffset = getRandomEdgePosition(containerW, containerH);
+            masterTl.to(
+              cursor,
+              {
+                x: bounds.x + (Math.random() - 0.5) * 40,
+                y: bounds.y + (Math.random() - 0.5) * 40,
+                duration: 0.5,
+                ease: 'power1.out',
+              },
+              delay + 0.85
+            );
+            masterTl.to(
+              cursor,
+              {
+                x: idleOffset.x * 0.85,
+                y: idleOffset.y * 0.85,
+                opacity: 0.3,
+                duration: 1.6,
+                ease: 'power2.out',
+              },
+              delay + 1.35
+            );
+          }
+        });
+
+        // Spec Divider Line Reveal
+        if (specDividerRef.current) {
+          masterTl.fromTo(
+            specDividerRef.current,
+            { scaleX: 0, transformOrigin: 'left center', autoAlpha: 0 },
+            { scaleX: 1, autoAlpha: 1, duration: 0.6, ease: 'power2.out' },
+            0.55
+          );
+        }
+
+        // E. Stat Numbers Scramble Animation (using ScrambleTextPlugin for 600-800ms)
+        const stats = [
+          { ref: statNum1Ref.current, finalVal: 'Full-Stack + SecOps' },
+          { ref: statNum2Ref.current, finalVal: 'Class of 2027' },
+          { ref: statNum3Ref.current, finalVal: '05 Flagship Pipelines' },
+          { ref: statNum4Ref.current, finalVal: 'Summer 2026' },
+        ];
+
+        stats.forEach((st) => {
+          if (st.ref) {
+            masterTl.to(
+              st.ref,
+              {
+                scrambleText: {
+                  text: st.finalVal,
+                  chars: '0123456789ABCDEF!<>-_/[]{}',
+                  speed: 0.5,
+                },
+                duration: 0.75,
+                ease: 'none',
+              },
+              0.65
+            );
+          }
+        });
+      };
+
+      runBuild();
+    }, container);
 
     return () => {
-      clearTimeout(tBadges);
-      clearTimeout(tCtas);
-      clearTimeout(tSpec);
-      if (headlineInterval) clearInterval(headlineInterval);
-      if (bioInterval) clearInterval(bioInterval);
+      isCancelled = true;
+      ctx.revert();
     };
-  }, [isInView, buildKey]);
+  }, [buildKey, prefersReducedMotion, isMobile]);
 
   return (
     <section 
       ref={containerRef}
-      className="relative pt-6 pb-12 sm:pt-10 sm:pb-16 min-h-[500px]" 
+      className="relative pt-6 pb-12 sm:pt-10 sm:pb-16 min-h-[580px] w-full" 
       id="hero"
     >
-      {/* NO OUTER BOX - CLEAN DIRECT CANVAS PRESENTATION */}
+      {/* 1. GUIDELINES OVERLAY LAYER (Position absolute inside section container) */}
+      <GuideLines
+        showRuler={!isMobile}
+        rulerOffset={isMobile ? 12 : 28}
+        hLineRef={hLineRef}
+        vLineRef={vLineRef}
+        rulerRef={rulerRef}
+      />
+
+      {/* 2. SELECTION BOXES LAYER (1 per target element, sized and positioned by GSAP) */}
+      <SelectionBox ref={boxBadge1Ref} dimensions={boxDims['badge1']} />
+      <SelectionBox ref={boxBadge2Ref} dimensions={boxDims['badge2']} />
+      <SelectionBox ref={boxBadge3Ref} dimensions={boxDims['badge3']} />
+      <SelectionBox ref={boxHeadlineRef} dimensions={boxDims['headline']} />
+      <SelectionBox ref={boxBioRef} dimensions={boxDims['bio']} />
+      <SelectionBox ref={boxCta1Ref} dimensions={boxDims['cta1']} />
+      <SelectionBox ref={boxCta2Ref} dimensions={boxDims['cta2']} />
+      <SelectionBox ref={boxLockRef} dimensions={boxDims['lock']} />
+      <SelectionBox ref={boxSpecRef} dimensions={boxDims['spec']} />
+
+      {/* 3. AUTONOMOUS CURSOR AGENTS LAYER (Each owns one element) */}
+      <CursorAgent ref={cursorBadge1Ref} persona={personaPool[0] || { id: 'dev', name: 'Dev [Kishal]', role: 'Lead', color: '#CCFF00' }} actionLabel="Select" />
+      <CursorAgent ref={cursorBadge2Ref} persona={personaPool[1] || { id: 'secops', name: 'SecOps', role: 'Security', color: '#FFFF00' }} actionLabel="Audit" />
+      <CursorAgent ref={cursorBadge3Ref} persona={personaPool[2] || { id: 'ai', name: 'AI_Agent', role: 'RAG', color: '#DFFF00' }} actionLabel="Mount" />
+      <CursorAgent ref={cursorHeadlineRef} persona={personaPool[3] || { id: 'ui', name: 'UI_Design', role: 'Type', color: '#CCFF00' }} actionLabel="Type Headline" />
+      <CursorAgent ref={cursorBioRef} persona={personaPool[4] || { id: 'reviewer', name: 'Reviewer', role: 'Spec', color: '#FFFFFF' }} actionLabel="Format Bio" />
+      <CursorAgent ref={cursorCta1Ref} persona={personaPool[5] || { id: 'kernel', name: 'Kernel', role: 'Actions', color: '#DFFF00' }} actionLabel="Resize CTA" />
+      <CursorAgent ref={cursorCta2Ref} persona={personaPool[6] || { id: 'syntax', name: 'Syntax_Worker', role: 'Git', color: '#CCFF00' }} actionLabel="Link Repo" />
+      <CursorAgent ref={cursorLockRef} persona={personaPool[7] || { id: 'crypto', name: 'Crypto_Worker', role: 'ECDSA', color: '#FFFF00' }} actionLabel="P-256 Assert" />
+      <CursorAgent ref={cursorSpecRef} persona={personaPool[8] || { id: 'qa', name: 'QA_Audit', role: 'Metrics', color: '#FFFF00' }} actionLabel="Scramble Stats" />
+
+      {/* 4. MAIN CONTENT DOM (Kept in layout; measured then revealed) */}
       <div className="flex flex-col gap-8 relative z-10">
         
-        {/* ROW 1: BADGES (Simultaneously placed by Dev, SecOps, AI_Agent) */}
+        {/* ROW 1: BADGES */}
         <div className="flex flex-wrap items-center gap-3 text-xs font-mono min-h-[36px]">
-          {isRendered && (
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Badge 1: VIT Chennai dragged in by Dev [Kishal] */}
-              <div className="relative inline-flex">
-                <motion.div 
-                  className="origin-left"
-                  initial={{ scaleX: 0, opacity: 0 }}
-                  animate={{ scaleX: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-                >
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-black border border-kiwi/50 text-kiwi font-medium shadow-sm">
-                    <span className="w-1.5 h-1.5 rounded-full bg-kiwi animate-pulse" />
-                    VIT Chennai &bull; Computer Science
-                  </span>
-                </motion.div>
-                
-                {/* Active building cursor (disappears the instant Dev Kishal starts following user mouse) */}
-                {!completedPersonas.includes('dev-kishal') && (
-                  <motion.div 
-                    className="absolute -top-7 pointer-events-none z-30 flex flex-col items-start select-none whitespace-nowrap"
-                    initial={{ left: '0%' }}
-                    animate={{ left: '100%' }}
-                    transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-                  >
-                    <svg className="w-4 h-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]" viewBox="0 0 24 24" fill="none">
-                      <path d="M3 1L21 13.5L13.5 15L9.5 23L6.5 21.5L10.5 14L3 1Z" fill="#CCFF00" stroke="#000000" strokeWidth="1.5" strokeLinejoin="round"/>
-                    </svg>
-                    <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded shadow-xl bg-[#0A0B08] text-kiwi border border-kiwi/50 ml-2 mt-0.5">
-                      Dev [Kishal] &bull; Snap
-                    </span>
-                  </motion.div>
-                )}
-              </div>
+          {/* Badge 1: VIT Chennai */}
+          <div ref={badge1Ref} className="relative inline-flex">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-black border border-kiwi/50 text-kiwi font-medium shadow-sm">
+              <span className="w-1.5 h-1.5 rounded-full bg-kiwi animate-pulse" />
+              VIT Chennai &bull; Computer Science
+            </span>
+          </div>
 
-              {/* Badge 2: Cybersecurity dragged in by SecOps */}
-              <div className="relative inline-flex">
-                <motion.div 
-                  className="origin-left"
-                  initial={{ scaleX: 0, opacity: 0 }}
-                  animate={{ scaleX: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-                >
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-black border border-kiwi-yellow/50 text-kiwi-yellow font-medium shadow-sm">
-                    <ShieldCheck size={13} />
-                    Cybersecurity &bull; ThreatLens
-                  </span>
-                </motion.div>
+          {/* Badge 2: Cybersecurity */}
+          <div ref={badge2Ref} className="relative inline-flex">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-black border border-kiwi-yellow/50 text-kiwi-yellow font-medium shadow-sm">
+              <ShieldCheck size={13} />
+              Cybersecurity &bull; ThreatLens
+            </span>
+          </div>
 
-                {!completedPersonas.includes('secops') && (
-                  <motion.div 
-                    className="absolute -top-7 pointer-events-none z-30 flex flex-col items-start select-none whitespace-nowrap"
-                    initial={{ left: '0%' }}
-                    animate={{ left: '100%' }}
-                    transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-                  >
-                    <svg className="w-4 h-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]" viewBox="0 0 24 24" fill="none">
-                      <path d="M3 1L21 13.5L13.5 15L9.5 23L6.5 21.5L10.5 14L3 1Z" fill="#FFFF00" stroke="#000000" strokeWidth="1.5" strokeLinejoin="round"/>
-                    </svg>
-                    <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded shadow-xl bg-[#0A0B08] text-[#FFFF00] border border-[#FFFF00]/50 ml-2 mt-0.5">
-                      SecOps &bull; Mount
-                    </span>
-                  </motion.div>
-                )}
-              </div>
-
-              {/* Badge 3: Applied AI dragged in by AI_Agent */}
-              <div className="relative inline-flex">
-                <motion.div 
-                  className="origin-left"
-                  initial={{ scaleX: 0, opacity: 0 }}
-                  animate={{ scaleX: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-                >
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-black border border-kiwi-chartreuse/50 text-kiwi-chartreuse font-medium shadow-sm">
-                    <Cpu size={13} />
-                    Applied AI &bull; FAISS RAG
-                  </span>
-                </motion.div>
-
-                {!completedPersonas.includes('ai-rag') && (
-                  <motion.div 
-                    className="absolute -top-7 pointer-events-none z-30 flex flex-col items-start select-none whitespace-nowrap"
-                    initial={{ left: '0%' }}
-                    animate={{ left: '100%' }}
-                    transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-                  >
-                    <svg className="w-4 h-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]" viewBox="0 0 24 24" fill="none">
-                      <path d="M3 1L21 13.5L13.5 15L9.5 23L6.5 21.5L10.5 14L3 1Z" fill="#DFFF00" stroke="#000000" strokeWidth="1.5" strokeLinejoin="round"/>
-                    </svg>
-                    <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded shadow-xl bg-[#0A0B08] text-[#DFFF00] border border-[#DFFF00]/50 ml-2 mt-0.5">
-                      AI_Agent &bull; Inject
-                    </span>
-                  </motion.div>
-                )}
-              </div>
-            </div>
-          )}
+          {/* Badge 3: Applied AI */}
+          <div ref={badge3Ref} className="relative inline-flex">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-black border border-kiwi-chartreuse/50 text-kiwi-chartreuse font-medium shadow-sm">
+              <Cpu size={13} />
+              Applied AI &bull; FAISS RAG
+            </span>
+          </div>
         </div>
 
-        {/* ROW 2: HEADLINE & BIO (Simultaneously typed letter-by-letter with cursors) */}
+        {/* ROW 2: HEADLINE & BIO */}
         <div className="space-y-4 max-w-3xl min-h-[140px]">
-          {isRendered && (
-            <div>
-              {/* Headline character stream */}
-              <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white leading-[1.08] font-sans inline">
-                {fullHeadline.slice(0, headlineChars)}
-                
-                {/* Dynamic Inline Typing Cursor (UI_Design) - disappears as soon as UI_Design starts following mouse */}
-                {!completedPersonas.includes('ui-ux') && (
-                  <span className="inline-block relative ml-1 align-baseline">
-                    <span className="inline-block w-2 sm:w-3 h-8 sm:h-12 bg-kiwi animate-pulse align-middle" />
-                    <span className="absolute -top-8 -left-1 pointer-events-none z-30 flex flex-col items-start select-none whitespace-nowrap">
-                      <svg className="w-4 h-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]" viewBox="0 0 24 24" fill="none">
-                        <path d="M3 1L21 13.5L13.5 15L9.5 23L6.5 21.5L10.5 14L3 1Z" fill="#CCFF00" stroke="#000000" strokeWidth="1.5" strokeLinejoin="round"/>
-                      </svg>
-                      <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded shadow-xl bg-[#0A0B08] text-kiwi border border-kiwi/50 ml-2 mt-0.5">
-                        UI_Design &bull; Typing
-                      </span>
-                    </span>
-                  </span>
-                )}
-              </h1>
+          <div>
+            <h1 
+              ref={headlineRef}
+              className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white leading-[1.08] font-sans inline-block"
+            >
+              Full-Stack Developer &amp; Systems Engineer
+            </h1>
 
-              {/* Concurrently typed bio character stream */}
-              <div className="mt-4 min-h-[60px]">
-                <p className="text-zinc-300 text-base sm:text-lg md:text-xl leading-relaxed max-w-2xl font-normal inline">
-                  {fullBio.slice(0, bioChars)}
-
-                  {/* Inline Caret Cursor moving concurrently with Reviewer */}
-                  {!completedPersonas.includes('reviewer') && (
-                    <span className="inline-block relative ml-1 align-baseline">
-                      <span className="inline-block w-1.5 sm:w-2 h-4 sm:h-5 bg-white animate-pulse align-middle" />
-                      <span className="absolute -top-7 -left-1 pointer-events-none z-30 flex flex-col items-start select-none whitespace-nowrap">
-                        <svg className="w-4 h-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]" viewBox="0 0 24 24" fill="none">
-                          <path d="M3 1L21 13.5L13.5 15L9.5 23L6.5 21.5L10.5 14L3 1Z" fill="#FFFFFF" stroke="#000000" strokeWidth="1.5" strokeLinejoin="round"/>
-                        </svg>
-                        <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded shadow-xl bg-[#0A0B08] text-white border border-white/50 ml-2 mt-0.5">
-                          Reviewer &bull; Typing
-                        </span>
-                      </span>
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ROW 3: CTAS (Simultaneously dragged open by Kernel & Reviewer, SecOps locks badge) */}
-        <div className="flex flex-wrap items-center gap-3 min-h-[44px]">
-          {isRendered && (
-            <div className="flex flex-wrap items-center gap-3">
-              {/* Primary CTA dragged open from width: 0 by Kernel */}
-              <div className="relative inline-flex">
-                <motion.div
-                  className="origin-left"
-                  initial={{ scaleX: 0, opacity: 0 }}
-                  animate={{ scaleX: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-                >
-                  <a
-                    href="#projects"
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-kiwi text-black font-semibold text-xs transition-all hover:bg-kiwi/90 shadow-kiwi-glow hover:scale-[1.02]"
-                  >
-                    <span>Explore Selected Works</span>
-                    <ArrowUpRight size={15} />
-                  </a>
-                </motion.div>
-
-                {!completedPersonas.includes('kernel') && (
-                  <motion.div 
-                    className="absolute -top-7 pointer-events-none z-30 flex flex-col items-start select-none whitespace-nowrap"
-                    initial={{ left: '0%' }}
-                    animate={{ left: '100%' }}
-                    transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-                  >
-                    <svg className="w-4 h-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]" viewBox="0 0 24 24" fill="none">
-                      <path d="M3 1L21 13.5L13.5 15L9.5 23L6.5 21.5L10.5 14L3 1Z" fill="#DFFF00" stroke="#000000" strokeWidth="1.5" strokeLinejoin="round"/>
-                    </svg>
-                    <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded shadow-xl bg-[#0A0B08] text-[#DFFF00] border border-[#DFFF00]/50 ml-2 mt-0.5">
-                      Kernel &bull; Stretch Button
-                    </span>
-                  </motion.div>
-                )}
-              </div>
-
-              {/* Secondary CTA dragged open by Reviewer */}
-              <div className="relative inline-flex">
-                <motion.div
-                  className="origin-left"
-                  initial={{ scaleX: 0, opacity: 0 }}
-                  animate={{ scaleX: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-                >
-                  <a
-                    href="https://github.com/Kishalll"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-black/80 border border-kiwi-border text-white text-xs font-medium hover:border-kiwi/50 hover:bg-kiwi-surface transition-all"
-                  >
-                    <Github size={15} className="text-zinc-400" />
-                    <span>github.com/Kishalll</span>
-                  </a>
-                </motion.div>
-              </div>
-
-              {/* Verified Badge stamped by SecOps */}
-              <div className="relative hidden sm:inline-flex">
-                <motion.div
-                  initial={{ scale: 0, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 280, damping: 22 }}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-black/60 border border-zinc-800 text-zinc-400 font-mono text-[11px]"
-                >
-                  <Lock size={12} className="text-kiwi-yellow" />
-                  <span>P-256 ECDSA Verified</span>
-                </motion.div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ROW 4: SPEC FOOTER (Simultaneously drawn across by QA_Audit, columns stamped) */}
-        {isRendered && (
-          <div className="relative pt-6">
-            {/* Dividing Line drawn across by QA_Audit */}
-            <div className="relative w-full h-[1px]">
-              <motion.div 
-                className="h-[1px] bg-kiwi-border/80 origin-left"
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ duration: 0.55, ease: 'easeOut' }}
-              />
-              {!completedPersonas.includes('qa-audit') && (
-                <motion.div
-                  className="absolute -top-6 pointer-events-none z-30 flex flex-col items-start select-none whitespace-nowrap"
-                  initial={{ left: '0%' }}
-                  animate={{ left: '98%' }}
-                  transition={{ duration: 0.55, ease: 'easeOut' }}
-                >
-                  <svg className="w-4 h-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]" viewBox="0 0 24 24" fill="none">
-                    <path d="M3 1L21 13.5L13.5 15L9.5 23L6.5 21.5L10.5 14L3 1Z" fill="#FFFF00" stroke="#000000" strokeWidth="1.5" strokeLinejoin="round"/>
-                  </svg>
-                  <span className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded shadow-xl bg-[#0A0B08] text-[#FFFF00] border border-[#FFFF00]/50 ml-2 mt-0.5">
-                    QA_Audit &bull; Draw Ruler
-                  </span>
-                </motion.div>
-              )}
-            </div>
-
-            {/* 4 Column Blocks Concurrently Stamped */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono text-zinc-400 mt-4">
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35 }}
+            <div className="mt-4 min-h-[60px]">
+              <p 
+                ref={bioRef}
+                className="text-zinc-300 text-base sm:text-lg md:text-xl leading-relaxed max-w-2xl font-normal inline-block"
               >
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">Focus</div>
-                <div className="text-white font-medium mt-0.5">Full-Stack + SecOps</div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35 }}
-              >
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">Education</div>
-                <div className="text-white font-medium mt-0.5">B.Tech CSE (3rd Yr)</div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35 }}
-              >
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">Systems</div>
-                <div className="text-white font-medium mt-0.5">Linux / Hyprland CLI</div>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.35 }}
-              >
-                <div className="text-[10px] uppercase tracking-wider text-zinc-500">Availability</div>
-                <div className="text-kiwi font-medium mt-0.5 flex items-center gap-1.5">
-                  <CheckCircle2 size={12} />
-                  <span>Open for Internships</span>
-                </div>
-              </motion.div>
+                Hey, I'm Kishal P. I build full-stack systems, threat detection architectures, and applied AI/RAG pipelines with rigorous precision and intuitive user experience.
+              </p>
             </div>
           </div>
-        )}
+        </div>
+
+        {/* ROW 3: CTAS */}
+        <div className="flex flex-wrap items-center gap-3 min-h-[44px]">
+          {/* Primary CTA */}
+          <div ref={cta1Ref} className="relative inline-flex">
+            <a
+              href="#projects"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-kiwi text-black font-semibold text-xs transition-all hover:bg-kiwi/90 shadow-kiwi-glow hover:scale-[1.02]"
+            >
+              <span>Explore Selected Works</span>
+              <ArrowUpRight size={15} />
+            </a>
+          </div>
+
+          {/* Secondary CTA */}
+          <div ref={cta2Ref} className="relative inline-flex">
+            <a
+              href="https://github.com/Kishalll"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-black/80 border border-kiwi-border text-white text-xs font-medium hover:border-kiwi/50 hover:bg-kiwi-surface transition-all"
+            >
+              <Github size={15} className="text-zinc-400" />
+              <span>github.com/Kishalll</span>
+            </a>
+          </div>
+
+          {/* Verified Badge */}
+          <div ref={lockRef} className="relative hidden sm:inline-flex">
+            <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-black/60 border border-zinc-800 text-zinc-400 font-mono text-[11px]">
+              <Lock size={12} className="text-kiwi-yellow" />
+              <span>P-256 ECDSA Verified</span>
+            </div>
+          </div>
+        </div>
+
+        {/* ROW 4: SPEC FOOTER & SCRAMBLE STATS */}
+        <div className="relative pt-6">
+          {/* Dividing Ruler Line */}
+          <div ref={specDividerRef} className="w-full h-[1px] bg-kiwi-border/80 origin-left" />
+
+          {/* 4 Column Stat Blocks */}
+          <div ref={specGridRef} className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono text-zinc-400 mt-4">
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Focus</div>
+              <div className="text-white font-medium mt-0.5">
+                <span ref={statNum1Ref}>Full-Stack + SecOps</span>
+              </div>
+            </div>
+
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Education</div>
+              <div className="text-white font-medium mt-0.5">
+                <span ref={statNum2Ref}>Class of 2027</span>
+              </div>
+            </div>
+
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Systems</div>
+              <div className="text-white font-medium mt-0.5">
+                <span ref={statNum3Ref}>05 Flagship Pipelines</span>
+              </div>
+            </div>
+
+            <div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Availability</div>
+              <div className="text-kiwi font-medium mt-0.5 flex items-center gap-1.5">
+                <CheckCircle2 size={12} />
+                <span ref={statNum4Ref}>Summer 2026</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </section>
   );
