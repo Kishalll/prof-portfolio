@@ -4,6 +4,8 @@ import { CanvasHeader } from './components/navigation/CanvasHeader';
 import { HeroBuilderCanvas } from './components/hero/HeroBuilderCanvas';
 import { AboutCanvas } from './components/about/AboutCanvas';
 import { ProjectsCanvas } from './components/projects/ProjectsCanvas';
+import { SkillsCanvas } from './components/skills/SkillsCanvas';
+import { ContactCanvas } from './components/contact/ContactCanvas';
 import { VisitorCursor } from './components/canvas/VisitorCursor';
 import { CursorSwarmEngine } from './components/canvas/CursorSwarmEngine';
 
@@ -67,6 +69,20 @@ export default function App() {
         {/* PROJECTS SHOWCASE */}
         <ProjectsCanvas 
           key={`projects-${buildKey}`}
+          buildKey={buildKey}
+          onFollowChange={setFollowingIds}
+        />
+
+        {/* SKILLS AUTO-LAYOUT TRAYS */}
+        <SkillsCanvas 
+          key={`skills-${buildKey}`}
+          buildKey={buildKey}
+          onFollowChange={setFollowingIds}
+        />
+
+        {/* COLLABORATIVE CONTACT BOARD */}
+        <ContactCanvas 
+          key={`contact-${buildKey}`}
           buildKey={buildKey}
           onFollowChange={setFollowingIds}
         />
