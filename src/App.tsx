@@ -3,6 +3,7 @@ import { useLenis } from './hooks/useLenis';
 import { CanvasHeader } from './components/navigation/CanvasHeader';
 import { HeroBuilderCanvas } from './components/hero/HeroBuilderCanvas';
 import { AboutCanvas } from './components/about/AboutCanvas';
+import { ProjectsCanvas } from './components/projects/ProjectsCanvas';
 import { VisitorCursor } from './components/canvas/VisitorCursor';
 import { CursorSwarmEngine } from './components/canvas/CursorSwarmEngine';
 
@@ -60,6 +61,13 @@ export default function App() {
         {/* ABOUT & ENGINEERING SPEC */}
         <AboutCanvas 
           key={`about-${buildKey}`}
+          onFollowChange={setFollowingIds}
+        />
+
+        {/* PROJECTS SHOWCASE */}
+        <ProjectsCanvas 
+          key={`projects-${buildKey}`}
+          buildKey={buildKey}
           onFollowChange={setFollowingIds}
         />
       </main>
