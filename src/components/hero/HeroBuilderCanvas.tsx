@@ -257,7 +257,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
   return (
     <section 
       ref={containerRef}
-      className="relative pt-6 pb-12 sm:pt-10 sm:pb-16 min-h-[580px] w-full" 
+      className="relative pt-6 pb-12 sm:pt-10 sm:pb-16 min-h-[580px] w-full scroll-mt-24" 
       id="hero"
     >
       {/* 1. GUIDELINES OVERLAY LAYER (Position absolute inside section container) */}

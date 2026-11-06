@@ -309,7 +309,7 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
   return (
     <section 
       ref={containerRef}
-      className="relative pt-8 pb-16 sm:pt-12 sm:pb-20 min-h-[600px] w-full" 
+      className="relative pt-8 pb-16 sm:pt-12 sm:pb-20 min-h-[600px] w-full scroll-mt-24" 
       id="skills"
     >
       {/* 1. GUIDELINES OVERLAY LAYER */}

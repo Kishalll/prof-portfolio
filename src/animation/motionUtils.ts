@@ -163,16 +163,21 @@ export function addCurvedCursorTravel(
 
   const proxy = { t: 0 };
 
-  // Set initial position
-  gsap.set(cursorEl, {
-    x: start.x,
-    y: start.y,
-    rotation: 0,
-    autoAlpha: 1,
-  });
+  // Set initial position inside the timeline so it resets cleanly on every restart
+  tl.set(
+    cursorEl,
+    {
+      x: start.x,
+      y: start.y,
+      rotation: 0,
+      autoAlpha: 1,
+    },
+    position
+  );
 
-  tl.to(
+  tl.fromTo(
     proxy,
+    { t: 0 },
     {
       t: 1,
       duration,
@@ -190,11 +195,12 @@ export function addCurvedCursorTravel(
           x,
           y,
           rotation,
+          autoAlpha: 1,
           force3D: true,
         });
       },
       onComplete: () => {
-        gsap.set(cursorEl, { rotation: 0 });
+        gsap.set(cursorEl, { rotation: 0, autoAlpha: 1 });
       },
     },
     position
@@ -229,14 +235,6 @@ export function addSelectionBoxBuild(
   const w = Math.max(bounds.width, 24);
   const h = Math.max(bounds.height, 16);
 
-  // Set width & height once from measured bounds
-  gsap.set(boxEl, {
-    x: bounds.x,
-    y: bounds.y,
-    width: w,
-    height: h,
-  });
-
   // Calculate transform-origin from cursor arrival point relative to box bounds
   const relX = cursorArrival.x - bounds.x;
   const relY = cursorArrival.y - bounds.y;
@@ -251,29 +249,45 @@ export function addSelectionBoxBuild(
   const labelWrap = boxEl.querySelector('.selection-label-wrap');
   const dimTextEl = boxEl.querySelector('.dimension-text');
 
-  // Set initial small state at cursor arrival point
-  gsap.set(boxEl, {
-    transformOrigin,
-    scaleX: startScaleX,
-    scaleY: startScaleY,
-    autoAlpha: 1,
-  });
+  // Set initial state inside timeline at delay so every replay/restart initializes cleanly
+  tl.set(
+    boxEl,
+    {
+      x: bounds.x,
+      y: bounds.y,
+      width: w,
+      height: h,
+      transformOrigin,
+      scaleX: startScaleX,
+      scaleY: startScaleY,
+      autoAlpha: 1,
+    },
+    delay
+  );
 
   // Counter-scale handles so they stay exactly 6px
   if (handles.length > 0) {
-    gsap.set(handles, {
-      scaleX: 1 / startScaleX,
-      scaleY: 1 / startScaleY,
-      transformOrigin: 'center center',
-    });
+    tl.set(
+      handles,
+      {
+        scaleX: 1 / startScaleX,
+        scaleY: 1 / startScaleY,
+        transformOrigin: 'center center',
+      },
+      delay
+    );
   }
 
   if (labelWrap) {
-    gsap.set(labelWrap, {
-      scaleX: 1 / startScaleX,
-      scaleY: 1 / startScaleY,
-      transformOrigin: 'top center',
-    });
+    tl.set(
+      labelWrap,
+      {
+        scaleX: 1 / startScaleX,
+        scaleY: 1 / startScaleY,
+        transformOrigin: 'top center',
+      },
+      delay
+    );
   }
 
   if (dimTextEl) {
@@ -321,8 +335,9 @@ export function addSelectionBoxBuild(
 
   // 3. Proxy tween updates dimension label DOM text live
   const dimProxy = { w: 24, h: 16 };
-  tl.to(
+  tl.fromTo(
     dimProxy,
+    { w: 24, h: 16 },
     {
       w,
       h,

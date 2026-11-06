@@ -273,7 +273,7 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
   return (
     <section 
       ref={containerRef}
-      className="relative pt-8 pb-12 sm:pt-12 sm:pb-16 min-h-[480px] w-full" 
+      className="relative pt-8 pb-12 sm:pt-12 sm:pb-16 min-h-[480px] w-full scroll-mt-24" 
       id="about"
     >
       {/* 1. GUIDELINES OVERLAY LAYER */}

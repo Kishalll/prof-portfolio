@@ -27,24 +27,32 @@ export function createTargetTrigger(
   const rebuildOnReentry = options.rebuildOnReentry ?? true;
   const staggerDelay = options.staggerDelay ?? 0;
 
+  let isBuilt = false;
+
+  const runBuild = () => {
+    if (isBuilt) return; // "A target that is built and still visible never rebuilds"
+    isBuilt = true;
+    if (staggerDelay > 0) {
+      gsap.delayedCall(staggerDelay, () => buildTl.restart());
+    } else {
+      buildTl.restart();
+    }
+  };
+
+  const handleReset = () => {
+    isBuilt = false;
+    buildTl.pause(0);
+    onReset();
+  };
+
   const entryTrigger = ScrollTrigger.create({
     trigger: targetEl,
     start: 'top 90%',
     end: 'bottom top',
-    onEnter: () => {
-      if (staggerDelay > 0) {
-        gsap.delayedCall(staggerDelay, () => buildTl.restart());
-      } else {
-        buildTl.restart();
-      }
-    },
+    onEnter: runBuild,
     onEnterBack: () => {
       if (rebuildOnReentry) {
-        if (staggerDelay > 0) {
-          gsap.delayedCall(staggerDelay, () => buildTl.restart());
-        } else {
-          buildTl.restart();
-        }
+        runBuild();
       }
     },
   });
@@ -55,14 +63,8 @@ export function createTargetTrigger(
       trigger: targetEl,
       start: 'top bottom',
       end: 'bottom top',
-      onLeave: () => {
-        buildTl.pause(0);
-        onReset();
-      },
-      onLeaveBack: () => {
-        buildTl.pause(0);
-        onReset();
-      },
+      onLeave: handleReset,
+      onLeaveBack: handleReset,
     });
   }
 
@@ -93,31 +95,31 @@ export function createTargetGuideLines(
   hLine.className = 'absolute pointer-events-none select-none z-20 h-[1px] bg-[#0D99FF]';
   hLine.style.left = 'calc(50% - 50vw)';
   hLine.style.width = '100vw';
-  gsap.set(hLine, {
-    y: bounds.y,
-    scaleX: 0,
-    transformOrigin: 'left center',
-    autoAlpha: 0.75,
-  });
   containerEl.appendChild(hLine);
   lines.push(hLine);
 
-  tl.to(hLine, { scaleX: 1, duration: 0.35, ease: 'power2.out' }, delay);
+  tl.set(hLine, { y: bounds.y, transformOrigin: 'left center' }, delay);
+  tl.fromTo(
+    hLine,
+    { scaleX: 0, autoAlpha: 0.75 },
+    { scaleX: 1, autoAlpha: 0.75, duration: 0.35, ease: 'power2.out' },
+    delay
+  );
   tl.to(hLine, { autoAlpha: 0, duration: 0.25, ease: 'power1.out' }, delay + 0.4);
 
   // Vertical guide line along element left edge
   const vLine = document.createElement('div');
   vLine.className = 'absolute top-0 bottom-0 pointer-events-none select-none z-20 w-[1px] bg-[#0D99FF]';
-  gsap.set(vLine, {
-    x: bounds.x,
-    scaleY: 0,
-    transformOrigin: 'top center',
-    autoAlpha: 0.75,
-  });
   containerEl.appendChild(vLine);
   lines.push(vLine);
 
-  tl.to(vLine, { scaleY: 1, duration: 0.35, ease: 'power2.out' }, delay);
+  tl.set(vLine, { x: bounds.x, transformOrigin: 'top center' }, delay);
+  tl.fromTo(
+    vLine,
+    { scaleY: 0, autoAlpha: 0.75 },
+    { scaleY: 1, autoAlpha: 0.75, duration: 0.35, ease: 'power2.out' },
+    delay
+  );
   tl.to(vLine, { autoAlpha: 0, duration: 0.25, ease: 'power1.out' }, delay + 0.4);
 
   const cleanup = () => {
@@ -126,7 +128,6 @@ export function createTargetGuideLines(
     });
   };
 
-  tl.eventCallback('onComplete', cleanup);
   return cleanup;
 }
 
@@ -156,7 +157,7 @@ export interface BuildTextOptions {
 export function buildText(
   tl: gsap.core.Timeline,
   options: BuildTextOptions
-): { reset: () => void } {
+): { reset: () => void; destroy: () => void } {
   const {
     containerEl,
     targetEl,
@@ -181,6 +182,26 @@ export function buildText(
   let blinkTween: gsap.core.Tween | null = null;
 
   const reset = () => {
+    if (boxEl) {
+      gsap.set(boxEl, { autoAlpha: 0, scale: 1 });
+    }
+    if (cursorEl) {
+      gsap.killTweensOf(cursorEl);
+      gsap.set(cursorEl, { autoAlpha: 0, rotation: 0 });
+    }
+    if (caretEl) {
+      gsap.set(caretEl, { autoAlpha: 0 });
+    }
+    if (split && split.chars) {
+      gsap.set(split.chars, { autoAlpha: 0 });
+    }
+    if (isHeadline && !isMobile) {
+      gsap.set([targetEl, boxEl], { scale: 0.35, transformOrigin: 'top left' });
+    }
+    gsap.set(targetEl, { autoAlpha: 1 });
+  };
+
+  const destroy = () => {
     if (blinkTween) {
       blinkTween.kill();
       blinkTween = null;
@@ -197,20 +218,11 @@ export function buildText(
       }
       split = null;
     }
-    if (boxEl) {
-      gsap.set(boxEl, { autoAlpha: 0, scale: 1 });
-    }
-    if (cursorEl) {
-      gsap.set(cursorEl, { autoAlpha: 0, rotation: 0 });
-    }
-    gsap.set(targetEl, { autoAlpha: 0, scale: 1 });
-    targetEl.style.visibility = 'hidden';
-    targetEl.style.opacity = '0';
   };
 
   if (!cursorEl || !boxEl) {
     gsap.set(targetEl, { autoAlpha: 1 });
-    return { reset };
+    return { reset, destroy };
   }
 
   // Pre-reveal container for measurement while keeping content invisible
@@ -288,8 +300,9 @@ export function buildText(
   const activeSplit = split;
   const activeCaret = caretEl;
 
-  tl.to(
+  tl.fromTo(
     split.chars,
+    { autoAlpha: 0 },
     {
       autoAlpha: 1,
       stagger: charSpeed,
@@ -358,12 +371,6 @@ export function buildText(
     {
       autoAlpha: 0,
       duration: 0.15,
-      onComplete: () => {
-        if (blinkTween) blinkTween.kill();
-        if (activeCaret && activeCaret.parentNode) {
-          activeCaret.parentNode.removeChild(activeCaret);
-        }
-      },
     },
     '+=0.05'
   );
@@ -380,13 +387,17 @@ export function buildText(
   addCursorIdleDrift(tl, cursorEl, agentIndex, totalAgents, containerW, containerH, '-=0.2');
 
   tl.eventCallback('onComplete', () => {
-    if (activeSplit) {
-      activeSplit.revert();
+    if (activeSplit && activeSplit.chars) {
+      gsap.set(activeSplit.chars, { autoAlpha: 1 });
+    }
+    gsap.set(targetEl, { autoAlpha: 1, scale: 1 });
+    if (activeCaret) {
+      gsap.set(activeCaret, { autoAlpha: 0 });
     }
     onComplete?.();
   });
 
-  return { reset };
+  return { reset, destroy };
 }
 
 export interface BuildBlockOptions {
@@ -431,10 +442,11 @@ export function buildBlock(
 
   const reset = () => {
     if (boxEl) gsap.set(boxEl, { autoAlpha: 0, scale: 1 });
-    if (cursorEl) gsap.set(cursorEl, { autoAlpha: 0, rotation: 0 });
+    if (cursorEl) {
+      gsap.killTweensOf(cursorEl);
+      gsap.set(cursorEl, { autoAlpha: 0, rotation: 0 });
+    }
     gsap.set(targetEl, { autoAlpha: 0, y: 8 });
-    targetEl.style.visibility = 'hidden';
-    targetEl.style.opacity = '0';
   };
 
   if (!cursorEl || !boxEl) {
@@ -491,6 +503,7 @@ export function buildBlock(
   addCursorIdleDrift(tl, cursorEl, agentIndex, totalAgents, containerW, containerH, delay + 1.1);
 
   tl.eventCallback('onComplete', () => {
+    gsap.set(targetEl, { autoAlpha: 1, y: 0 });
     onComplete?.();
   });
 
@@ -525,7 +538,10 @@ export function buildNav(
 
   const reset = () => {
     if (boxEl) gsap.set(boxEl, { autoAlpha: 0, scale: 1 });
-    if (cursorEl) gsap.set(cursorEl, { autoAlpha: 0 });
+    if (cursorEl) {
+      gsap.killTweensOf(cursorEl);
+      gsap.set(cursorEl, { autoAlpha: 0, rotation: 0 });
+    }
     navLinks.forEach((link) => {
       gsap.set(link, { autoAlpha: 0, y: -4 });
       link.style.visibility = 'hidden';
@@ -594,6 +610,7 @@ export function buildNav(
   addCursorIdleDrift(tl, cursorEl, 1, 2, containerW, containerH, delay + navLinks.length * 0.28 + 0.4);
 
   tl.eventCallback('onComplete', () => {
+    navLinks.forEach((link) => gsap.set(link, { autoAlpha: 1, y: 0 }));
     onComplete?.();
   });
 

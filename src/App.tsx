@@ -52,6 +52,7 @@ function PortfolioAppContent() {
         {/* ABOUT & ENGINEERING SPEC */}
         <AboutCanvas 
           key={`about-${replayKey}`}
+          buildKey={replayKey}
         />
 
         {/* PROJECTS SHOWCASE */}

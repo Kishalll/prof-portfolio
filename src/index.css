@@ -6,6 +6,14 @@
   :root {
     color-scheme: dark;
   }
+
+  html {
+    scroll-padding-top: 80px;
+  }
+
+  section[id] {
+    scroll-margin-top: 80px;
+  }
   
   body {
     @apply bg-black text-white font-sans overflow-x-hidden;

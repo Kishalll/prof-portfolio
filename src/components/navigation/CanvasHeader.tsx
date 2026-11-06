@@ -44,9 +44,12 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
 
     const ctx = gsap.context(() => {
       gsap.set(
-        [brandRef.current, navRef.current, actionsRef.current].filter(Boolean),
+        [brandRef.current, actionsRef.current].filter(Boolean),
         { autoAlpha: 0 }
       );
+      if (navRef.current) {
+        gsap.set(Array.from(navRef.current.children), { autoAlpha: 0 });
+      }
     }, headerEl);
 
     return () => ctx.revert();
@@ -119,14 +122,17 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
           }
 
           // 4. Nav items reveal sequentially with stagger (Item 20 & 27)
-          if (navRef.current && navRef.current.children.length > 0) {
-            const links = Array.from(navRef.current.children) as HTMLElement[];
-            tl.fromTo(
-              links,
-              { autoAlpha: 0, y: -4 },
-              { autoAlpha: 1, y: 0, duration: 0.3, stagger: 0.06, ease: 'power2.out' },
-              0.55
-            );
+          if (navRef.current) {
+            tl.set(navRef.current, { autoAlpha: 1, visibility: 'visible' }, 0.5);
+            if (navRef.current.children.length > 0) {
+              const links = Array.from(navRef.current.children) as HTMLElement[];
+              tl.fromTo(
+                links,
+                { autoAlpha: 0, y: -4 },
+                { autoAlpha: 1, y: 0, duration: 0.3, stagger: 0.06, ease: 'power2.out' },
+                0.55
+              );
+            }
           }
 
           // 5. Actions reveal
@@ -151,6 +157,16 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
               1.0
             );
           }
+
+          tl.eventCallback('onComplete', () => {
+            gsap.set([brandRef.current, navRef.current, actionsRef.current].filter(Boolean), {
+              autoAlpha: 1,
+              visibility: 'visible',
+            });
+            if (navRef.current) {
+              gsap.set(Array.from(navRef.current.children), { autoAlpha: 1, visibility: 'visible' });
+            }
+          });
         });
       };
 
@@ -186,7 +202,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
         </div>
 
         {/* Center: Clean Navigation */}
-        <nav ref={navRef} style={initialStyle} className="hidden md:flex items-center gap-6 text-xs font-medium text-zinc-400">
+        <nav ref={navRef} className="hidden md:flex items-center gap-6 text-xs font-medium text-zinc-400">
           <a href="#hero" className="hover:text-kiwi transition-colors">Overview</a>
           <a href="#about" className="hover:text-kiwi transition-colors">About</a>
           <a href="#projects" className="hover:text-kiwi transition-colors">Projects</a>
