@@ -6,7 +6,7 @@ import {
   Linkedin,
   Mail
 } from 'lucide-react';
-import { gsap, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition, addCurvedCursorTravel, addSelectionBoxBuild, addCursorIdleDrift } from '../../animation/motionUtils';
+import { gsap, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition, addCurvedCursorTravel, addSelectionBoxBuild, addCursorIdleDrift, detachCursorFromUserFollow } from '../../animation/motionUtils';
 import { useChoreographer } from '../../animation/ChoreographerContext';
 import { SelectionBox, CursorAgent } from '../canvas/overlays';
 
@@ -154,7 +154,8 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
               2,
               containerW,
               containerH,
-              1.0
+              1.0,
+              headerEl
             );
           }
 
@@ -175,6 +176,9 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
 
     return () => {
       isCancelled = true;
+      if (cursorRef.current) {
+        detachCursorFromUserFollow(cursorRef.current);
+      }
       ctx.revert();
     };
   }, [buildKey, prefersReducedMotion, isMobile]);

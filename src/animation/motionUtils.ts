@@ -3,6 +3,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrambleTextPlugin } from 'gsap/ScrambleTextPlugin';
 import { SplitText } from 'gsap/SplitText';
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
+import { getMousePos } from './mouseTracker';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger, ScrambleTextPlugin, SplitText, MotionPathPlugin);
@@ -390,47 +391,181 @@ export function getDeterministicIdlePosition(
   return { x, y };
 }
 
+interface ActiveFollower {
+  cursorEl: HTMLElement;
+  containerEl: HTMLElement;
+  dx: number;
+  dy: number;
+  easeFactor: number;
+  currentX: number;
+  currentY: number;
+  isSettled: boolean;
+}
+
+const activeFollowers = new Map<HTMLElement, ActiveFollower>();
+let isTickerActive = false;
+
+function onFollowerTick() {
+  if (activeFollowers.size === 0) {
+    if (isTickerActive) {
+      gsap.ticker.remove(onFollowerTick);
+      isTickerActive = false;
+    }
+    return;
+  }
+
+  const mouse = getMousePos();
+
+  activeFollowers.forEach((follower) => {
+    // If element or container is no longer connected to DOM, cleanup
+    if (!follower.cursorEl.parentNode || !follower.containerEl.parentNode) {
+      activeFollowers.delete(follower.cursorEl);
+      return;
+    }
+
+    const cRect = follower.containerEl.getBoundingClientRect();
+    const targetX = mouse.clientX - cRect.left + follower.dx;
+    const targetY = mouse.clientY - cRect.top + follower.dy;
+
+    const diffX = targetX - follower.currentX;
+    const diffY = targetY - follower.currentY;
+    const dist = Math.hypot(diffX, diffY);
+
+    if (dist > 0.5) {
+      follower.isSettled = false;
+      follower.currentX += diffX * follower.easeFactor;
+      follower.currentY += diffY * follower.easeFactor;
+      gsap.set(follower.cursorEl, {
+        x: follower.currentX,
+        y: follower.currentY,
+        rotation: 0,
+        autoAlpha: 0.95,
+        force3D: true,
+      });
+    } else if (!follower.isSettled) {
+      // Reached exact target: stay completely still right there
+      follower.isSettled = true;
+      follower.currentX = targetX;
+      follower.currentY = targetY;
+      gsap.set(follower.cursorEl, {
+        x: targetX,
+        y: targetY,
+        rotation: 0,
+        autoAlpha: 0.95,
+        force3D: true,
+      });
+    }
+  });
+}
+
 /**
- * Transitions cursor to its deterministic idle position, then initiates
- * a slow looping yoyo drift (6-10s) to keep it alive without blocking timeline completion.
+ * Calculates a unique follower cluster offset around the visitor cursor.
+ * Spreads cursors in a comfortable arc around the pointer with no overlapping.
+ */
+export function getFollowerOffset(index: number, total: number): { dx: number; dy: number } {
+  const count = Math.max(total, 5);
+  // Spread in an arc around the cursor pointer (from 30deg to 300deg)
+  const angle = 0.5 + (index / count) * 1.7 * Math.PI;
+  const radius = 34 + (index % 3) * 14;
+  const dx = Math.cos(angle) * radius;
+  const dy = Math.sin(angle) * radius + 18;
+  return { dx, dy };
+}
+
+/**
+ * Attaches an autonomous cursor to follow the user's cursor once its build completes.
+ * Transitions smoothly to the user's cursor, follows while moving, and stays strictly stationary
+ * when motionless or off-screen.
+ */
+export function attachCursorToUserFollow(
+  cursorEl: HTMLElement,
+  containerEl: HTMLElement,
+  index: number,
+  total: number
+) {
+  // Kill any existing conflicting tweens
+  gsap.killTweensOf(cursorEl);
+
+  const { dx, dy } = getFollowerOffset(index, total);
+  const mouse = getMousePos();
+  const cRect = containerEl.getBoundingClientRect();
+  const targetX = mouse.clientX - cRect.left + dx;
+  const targetY = mouse.clientY - cRect.top + dy;
+
+  // Read current position of cursor in container
+  const curX = Number(gsap.getProperty(cursorEl, 'x')) || targetX;
+  const curY = Number(gsap.getProperty(cursorEl, 'y')) || targetY;
+
+  // Staggered ease factor for natural follow latency (first follower follows briskly, later ones trail slightly)
+  const easeFactor = Math.max(0.08, 0.16 - (index % 4) * 0.02);
+
+  const follower: ActiveFollower = {
+    cursorEl,
+    containerEl,
+    dx,
+    dy,
+    easeFactor,
+    currentX: curX,
+    currentY: curY,
+    isSettled: false,
+  };
+
+  activeFollowers.set(cursorEl, follower);
+
+  // Smooth entry flight from element build finish position to user cursor
+  gsap.to(cursorEl, {
+    x: targetX,
+    y: targetY,
+    rotation: 0,
+    autoAlpha: 0.95,
+    duration: 0.65,
+    ease: 'power2.out',
+    onUpdate: () => {
+      follower.currentX = Number(gsap.getProperty(cursorEl, 'x'));
+      follower.currentY = Number(gsap.getProperty(cursorEl, 'y'));
+    },
+    onComplete: () => {
+      follower.isSettled = true;
+    },
+  });
+
+  if (!isTickerActive) {
+    gsap.ticker.add(onFollowerTick);
+    isTickerActive = true;
+  }
+}
+
+/**
+ * Detaches an autonomous cursor from following the user's cursor.
+ * Called on task reset and before starting a new build task.
+ */
+export function detachCursorFromUserFollow(cursorEl: HTMLElement) {
+  activeFollowers.delete(cursorEl);
+  gsap.killTweensOf(cursorEl);
+}
+
+/**
+ * Transition cursor to follow user's cursor upon completing build.
+ * Stays strictly still when motionless or off-screen.
  */
 export function addCursorIdleDrift(
   tl: gsap.core.Timeline,
   cursorEl: HTMLElement,
   index: number,
   total: number,
-  containerW: number,
-  containerH: number,
-  position: number | string
+  _containerW: number,
+  _containerH: number,
+  position: number | string,
+  containerEl?: HTMLElement
 ) {
-  const idle = getDeterministicIdlePosition(index, total, containerW, containerH);
-
-  // Transition to edge idle position
-  tl.to(
-    cursorEl,
-    {
-      x: idle.x,
-      y: idle.y,
-      rotation: 0,
-      autoAlpha: 0.5,
-      duration: 1.1,
-      ease: 'power2.out',
-      onComplete: () => {
-        // Slow looping drift (6 to 10s, small amplitude 6-12px)
-        const duration = 6 + (index % 5) * 0.8;
-        const ampX = 6 + (index % 3) * 2;
-        const ampY = 8 + (index % 4) * 2;
-
-        gsap.to(cursorEl, {
-          x: idle.x + (index % 2 === 0 ? ampX : -ampX),
-          y: idle.y + ampY,
-          duration,
-          ease: 'sine.inOut',
-          yoyo: true,
-          repeat: -1,
-        });
-      },
+  tl.call(
+    () => {
+      const container = containerEl || cursorEl.closest('section') || (cursorEl.parentElement as HTMLElement);
+      if (container) {
+        attachCursorToUserFollow(cursorEl, container, index, total);
+      }
     },
+    undefined,
     position
   );
 }

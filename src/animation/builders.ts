@@ -7,7 +7,8 @@ import {
   getVisibleViewportSpawn, 
   addCurvedCursorTravel, 
   addSelectionBoxBuild, 
-  addCursorIdleDrift 
+  addCursorIdleDrift,
+  detachCursorFromUserFollow
 } from './motionUtils';
 
 /**
@@ -186,7 +187,7 @@ export function buildText(
       gsap.set(boxEl, { autoAlpha: 0, scale: 1 });
     }
     if (cursorEl) {
-      gsap.killTweensOf(cursorEl);
+      detachCursorFromUserFollow(cursorEl);
       gsap.set(cursorEl, { autoAlpha: 0, rotation: 0 });
     }
     if (caretEl) {
@@ -383,8 +384,8 @@ export function buildText(
     ease: 'power2.inOut',
   });
 
-  // Cursor parks in 24px margin with slow yoyo drift
-  addCursorIdleDrift(tl, cursorEl, agentIndex, totalAgents, containerW, containerH, '-=0.2');
+  // Cursor transitions to follow user's cursor
+  addCursorIdleDrift(tl, cursorEl, agentIndex, totalAgents, containerW, containerH, '-=0.2', containerEl);
 
   tl.eventCallback('onComplete', () => {
     if (activeSplit && activeSplit.chars) {
@@ -443,7 +444,7 @@ export function buildBlock(
   const reset = () => {
     if (boxEl) gsap.set(boxEl, { autoAlpha: 0, scale: 1 });
     if (cursorEl) {
-      gsap.killTweensOf(cursorEl);
+      detachCursorFromUserFollow(cursorEl);
       gsap.set(cursorEl, { autoAlpha: 0, rotation: 0 });
     }
     gsap.set(targetEl, { autoAlpha: 0, y: 8 });
@@ -499,8 +500,8 @@ export function buildBlock(
     delay + 0.6
   );
 
-  // 5. Cursor drifts to deterministic idle spot
-  addCursorIdleDrift(tl, cursorEl, agentIndex, totalAgents, containerW, containerH, delay + 1.1);
+  // 5. Cursor transitions to follow user's cursor
+  addCursorIdleDrift(tl, cursorEl, agentIndex, totalAgents, containerW, containerH, delay + 1.1, containerEl);
 
   tl.eventCallback('onComplete', () => {
     gsap.set(targetEl, { autoAlpha: 1, y: 0 });
@@ -539,7 +540,7 @@ export function buildNav(
   const reset = () => {
     if (boxEl) gsap.set(boxEl, { autoAlpha: 0, scale: 1 });
     if (cursorEl) {
-      gsap.killTweensOf(cursorEl);
+      detachCursorFromUserFollow(cursorEl);
       gsap.set(cursorEl, { autoAlpha: 0, rotation: 0 });
     }
     navLinks.forEach((link) => {
@@ -606,8 +607,8 @@ export function buildNav(
     prevPos = targetPos;
   });
 
-  // Cursor idles to right edge after visiting all links
-  addCursorIdleDrift(tl, cursorEl, 1, 2, containerW, containerH, delay + navLinks.length * 0.28 + 0.4);
+  // Cursor transitions to follow user's cursor
+  addCursorIdleDrift(tl, cursorEl, 1, 2, containerW, containerH, delay + navLinks.length * 0.28 + 0.4, containerEl);
 
   tl.eventCallback('onComplete', () => {
     navLinks.forEach((link) => gsap.set(link, { autoAlpha: 1, y: 0 }));
