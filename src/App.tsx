@@ -90,7 +90,7 @@ function PortfolioAppContent() {
 
 export default function App() {
   return (
-    <ChoreographerProvider rebuildOnReentry={false}>
+    <ChoreographerProvider>
       <PortfolioAppContent />
     </ChoreographerProvider>
   );

@@ -46,39 +46,47 @@ export function getRelativeBounds(targetEl: HTMLElement, containerEl: HTMLElemen
 }
 
 /**
- * Standard masked blur-to-sharp heading reveal animation
+ * Spawns just outside the visible viewport, computed in section coordinates at trigger time.
+ * Prevents cursors from spawning off-screen on tall down-page sections.
  */
-export function headingReveal(
-  tl: gsap.core.Timeline,
-  headingEl: HTMLElement,
-  options: {
-    duration?: number;
-    position?: number | string;
-    ease?: string;
-  } = {}
-) {
-  const duration = options.duration ?? 0.72;
-  const position = options.position ?? '+=0';
-  const ease = options.ease ?? 'power3.out';
+export function getVisibleViewportSpawn(containerEl: HTMLElement): { x: number; y: number } {
+  if (typeof window === 'undefined') return { x: 0, y: 0 };
+  const rect = containerEl.getBoundingClientRect();
+  const cWidth = rect.width || window.innerWidth;
+  const cHeight = rect.height || 600;
 
-  return tl.fromTo(
-    headingEl,
-    {
-      autoAlpha: 0,
-      filter: 'blur(8px)',
-      y: 14,
-      clipPath: 'inset(0 0 100% 0)',
-    },
-    {
-      autoAlpha: 1,
-      filter: 'blur(0px)',
-      y: 0,
-      clipPath: 'inset(0 0 0% 0)',
-      duration,
-      ease,
-    },
-    position
-  );
+  // Visible boundaries of container within viewport
+  const visibleTop = Math.max(0, -rect.top);
+  const visibleBottom = Math.min(cHeight, window.innerHeight - rect.top);
+  const visibleLeft = Math.max(0, -rect.left);
+  const visibleRight = Math.min(cWidth, window.innerWidth - rect.left);
+
+  const edges = ['top', 'bottom', 'left', 'right'] as const;
+  const edge = edges[Math.floor(Math.random() * edges.length)];
+  const pad = 80;
+
+  switch (edge) {
+    case 'top':
+      return {
+        x: visibleLeft + Math.random() * Math.max(40, visibleRight - visibleLeft),
+        y: visibleTop - pad - Math.random() * 40,
+      };
+    case 'bottom':
+      return {
+        x: visibleLeft + Math.random() * Math.max(40, visibleRight - visibleLeft),
+        y: visibleBottom + pad + Math.random() * 40,
+      };
+    case 'left':
+      return {
+        x: visibleLeft - pad - Math.random() * 60,
+        y: visibleTop + Math.random() * Math.max(40, visibleBottom - visibleTop),
+      };
+    case 'right':
+      return {
+        x: visibleRight + pad + Math.random() * 60,
+        y: visibleTop + Math.random() * Math.max(40, visibleBottom - visibleTop),
+      };
+  }
 }
 
 /**
@@ -339,150 +347,6 @@ export function addSelectionBoxBuild(
     },
     fadeDelay
   );
-}
-
-/**
- * Creates 2-4 horizontal and 2-4 vertical guide lines tied to real element edges,
- * rendered in a fixed viewport overlay (pointer-events: none).
- * Drawn with scaleX/scaleY from 0, visible for ~0.4s then faded.
- * Positioned once via CSS transforms (x/y), not top/left.
- * Includes the red vertical ruler line and cleans up overlay on completion.
- */
-export function createFixedGuideLinesOverlay(
-  tl: gsap.core.Timeline,
-  targetElements: HTMLElement[],
-  options: {
-    showRuler?: boolean;
-    rulerOffset?: number;
-    delay?: number;
-  } = {}
-): (() => void) {
-  if (typeof document === 'undefined') return () => {};
-
-  const showRuler = options.showRuler ?? true;
-  const rulerOffset = options.rulerOffset ?? 24;
-  const baseDelay = options.delay ?? 0.05;
-
-  const overlay = document.createElement('div');
-  overlay.className = 'fixed inset-0 pointer-events-none select-none z-40 overflow-hidden';
-  overlay.setAttribute('aria-hidden', 'true');
-  document.body.appendChild(overlay);
-
-  const cleanup = () => {
-    if (overlay.parentNode) {
-      overlay.parentNode.removeChild(overlay);
-    }
-  };
-
-  const validEls = targetElements.filter(Boolean);
-  if (validEls.length === 0) {
-    cleanup();
-    return () => {};
-  }
-
-  // Red vertical ruler line near left edge
-  if (showRuler) {
-    const ruler = document.createElement('div');
-    ruler.className = 'absolute top-0 bottom-0 w-[1px] bg-[#FF3B30] pointer-events-none';
-    ruler.innerHTML = `<span class="absolute top-2 left-1 text-[8px] font-mono text-[#FF3B30]/80">RULER ${rulerOffset}px</span>`;
-    gsap.set(ruler, {
-      x: rulerOffset,
-      scaleY: 0,
-      transformOrigin: 'top center',
-      autoAlpha: 0,
-    });
-    overlay.appendChild(ruler);
-
-    tl.to(
-      ruler,
-      {
-        scaleY: 1,
-        autoAlpha: 0.85,
-        duration: 0.65,
-        ease: 'power2.out',
-      },
-      baseDelay
-    );
-  }
-
-  // 2-4 Horizontal & Vertical guide lines tied to real element edges
-  const count = Math.min(4, Math.max(2, validEls.length));
-  for (let i = 0; i < count; i++) {
-    const el = validEls[i];
-    const rect = el.getBoundingClientRect();
-    const yEdge = i % 2 === 0 ? rect.top : rect.bottom;
-    const xEdge = i % 2 === 0 ? rect.left : rect.right;
-    const stagger = baseDelay + 0.15 + i * 0.12;
-
-    // Horizontal guide line spanning viewport width
-    const hLine = document.createElement('div');
-    hLine.className = 'absolute left-0 w-full h-[1px] bg-[#0D99FF] pointer-events-none';
-    gsap.set(hLine, {
-      y: yEdge,
-      scaleX: 0,
-      transformOrigin: 'left center',
-      autoAlpha: 0.75,
-    });
-    overlay.appendChild(hLine);
-
-    tl.to(
-      hLine,
-      {
-        scaleX: 1,
-        duration: 0.35,
-        ease: 'power2.out',
-      },
-      stagger
-    );
-
-    tl.to(
-      hLine,
-      {
-        autoAlpha: 0,
-        duration: 0.25,
-        ease: 'power1.out',
-      },
-      stagger + 0.4
-    );
-
-    // Vertical guide line spanning viewport height
-    const vLine = document.createElement('div');
-    vLine.className = 'absolute top-0 h-full w-[1px] bg-[#0D99FF] pointer-events-none';
-    gsap.set(vLine, {
-      x: xEdge,
-      scaleY: 0,
-      transformOrigin: 'top center',
-      autoAlpha: 0.75,
-    });
-    overlay.appendChild(vLine);
-
-    tl.to(
-      vLine,
-      {
-        scaleY: 1,
-        duration: 0.35,
-        ease: 'power2.out',
-      },
-      stagger
-    );
-
-    tl.to(
-      vLine,
-      {
-        autoAlpha: 0,
-        duration: 0.25,
-        ease: 'power1.out',
-      },
-      stagger + 0.4
-    );
-  }
-
-  // Auto remove overlay once the build completes
-  tl.eventCallback('onComplete', () => {
-    cleanup();
-  });
-
-  return cleanup;
 }
 
 /**

@@ -7,7 +7,8 @@ import {
   Lock, 
   CheckCircle2 
 } from 'lucide-react';
-import { gsap, ScrollTrigger, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition, addCurvedCursorTravel, addSelectionBoxBuild, createFixedGuideLinesOverlay, addCursorIdleDrift, headingReveal } from '../../animation/motionUtils';
+import { gsap, ScrollTrigger, waitForFontsAndLayout } from '../../animation/motionUtils';
+import { buildText, buildBlock, createTargetTrigger } from '../../animation/builders';
 import { useChoreographer } from '../../animation/ChoreographerContext';
 import { useSectionChoreographer, ChoreographerLayer } from '../../animation/CursorChoreographer';
 import { GuideLines } from '../canvas/overlays';
@@ -20,19 +21,14 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
   buildKey = 0,
 }) => {
   const containerRef = useRef<HTMLElement>(null);
-  const { isMobile, prefersReducedMotion } = useChoreographer();
+  const { isMobile, prefersReducedMotion, rebuildOnReentry } = useChoreographer();
 
-  // Content Element Refs
-  const badge1Ref = useRef<HTMLDivElement>(null);
-  const badge2Ref = useRef<HTMLDivElement>(null);
-  const badge3Ref = useRef<HTMLDivElement>(null);
+  // Leaf Target Element Refs
+  const badgesRowRef = useRef<HTMLDivElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
   const bioRef = useRef<HTMLParagraphElement>(null);
-  const cta1Ref = useRef<HTMLDivElement>(null);
-  const cta2Ref = useRef<HTMLDivElement>(null);
-  const lockRef = useRef<HTMLDivElement>(null);
-  const specDividerRef = useRef<HTMLDivElement>(null);
-  const specGridRef = useRef<HTMLDivElement>(null);
+  const ctaRowRef = useRef<HTMLDivElement>(null);
+  const specBlockRef = useRef<HTMLDivElement>(null);
 
   // Stat Number Scramble Target Refs
   const statNum1Ref = useRef<HTMLSpanElement>(null);
@@ -40,13 +36,15 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
   const statNum3Ref = useRef<HTMLSpanElement>(null);
   const statNum4Ref = useRef<HTMLSpanElement>(null);
 
-  // GuideLines Refs
+  // GuideLines & Ruler Refs
   const hLineRef = useRef<HTMLDivElement>(null);
   const vLineRef = useRef<HTMLDivElement>(null);
   const rulerRef = useRef<HTMLDivElement>(null);
 
   // Pool-managed autonomous cursor choreographer
   const { agents, assign, releaseAll } = useSectionChoreographer(isMobile);
+
+  const initialStyle = prefersReducedMotion ? undefined : { opacity: 0, visibility: 'hidden' as const };
 
   // Synchronous hide before paint (stops the flash completely)
   useLayoutEffect(() => {
@@ -57,16 +55,11 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
     const ctx = gsap.context(() => {
       gsap.set(
         [
-          badge1Ref.current,
-          badge2Ref.current,
-          badge3Ref.current,
+          badgesRowRef.current,
           headlineRef.current,
           bioRef.current,
-          cta1Ref.current,
-          cta2Ref.current,
-          lockRef.current,
-          specDividerRef.current,
-          specGridRef.current,
+          ctaRowRef.current,
+          specBlockRef.current,
         ].filter(Boolean),
         { autoAlpha: 0 }
       );
@@ -88,207 +81,166 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
         await waitForFontsAndLayout();
         if (isCancelled || !container) return;
 
-        const containerRect = container.getBoundingClientRect();
-        const containerW = containerRect.width || window.innerWidth;
-        const containerH = containerRect.height || 600;
-
-        const contentElements = [
-          badge1Ref.current,
-          badge2Ref.current,
-          badge3Ref.current,
+        const leafTargets = [
+          badgesRowRef.current,
           headlineRef.current,
           bioRef.current,
-          cta1Ref.current,
-          cta2Ref.current,
-          lockRef.current,
-          specDividerRef.current,
-          specGridRef.current,
+          ctaRowRef.current,
+          specBlockRef.current,
         ].filter(Boolean) as HTMLElement[];
-
-        const selectionBoxes = agents.map((a) => a.boxRef.current).filter(Boolean) as HTMLElement[];
-        const cursorEls = agents.map((a) => a.cursorRef.current).filter(Boolean) as HTMLElement[];
 
         // Handle prefers-reduced-motion: reveal all content immediately with zero overlays
         if (prefersReducedMotion) {
-          gsap.set(contentElements, { autoAlpha: 1, y: 0, filter: 'none', clipPath: 'none' });
-          gsap.set(selectionBoxes, { autoAlpha: 0 });
-          gsap.set(cursorEls, { autoAlpha: 0 });
+          gsap.set(leafTargets, { autoAlpha: 1, y: 0, scale: 1 });
           return;
         }
 
-        // 1. Initial State: Content is in layout but invisible (autoAlpha: 0)
-        gsap.set(contentElements, { autoAlpha: 0 });
-        gsap.set(selectionBoxes, { autoAlpha: 0 });
-        gsap.set([hLineRef.current, vLineRef.current], { autoAlpha: 0 });
+        ctx.add(() => {
+          // 0. Red Vertical Ruler: scales in when section enters viewport, hides when off-screen
+          if (rulerRef.current) {
+            gsap.set(rulerRef.current, { scaleY: 0, transformOrigin: 'top center', autoAlpha: 0 });
+            ScrollTrigger.create({
+              trigger: container,
+              start: 'top bottom',
+              end: 'bottom top',
+              onToggle: (self) => {
+                gsap.to(rulerRef.current, {
+                  scaleY: self.isActive ? 1 : 0,
+                  autoAlpha: self.isActive ? 0.85 : 0,
+                  duration: 0.6,
+                  ease: 'power2.out',
+                });
+              },
+            });
+          }
 
-        // Measure true relative bounds for each target
-        const targets = [
-          { key: 'badge1', el: badge1Ref.current, label: 'Select', delay: 0.0, isHeadline: false },
-          { key: 'badge2', el: badge2Ref.current, label: 'Audit', delay: 0.06, isHeadline: false },
-          { key: 'badge3', el: badge3Ref.current, label: 'Mount', delay: 0.12, isHeadline: false },
-          { key: 'headline', el: headlineRef.current, label: 'Type Headline', delay: 0.20, isHeadline: true },
-          { key: 'bio', el: bioRef.current, label: 'Format Bio', delay: 0.30, isHeadline: false },
-          { key: 'cta1', el: cta1Ref.current, label: 'Resize CTA', delay: 0.40, isHeadline: false },
-          { key: 'cta2', el: cta2Ref.current, label: 'Link Repo', delay: 0.46, isHeadline: false },
-          { key: 'lock', el: lockRef.current, label: 'P-256 Assert', delay: 0.52, isHeadline: false },
-          { key: 'spec', el: specGridRef.current, label: 'Scramble Stats', delay: 0.60, isHeadline: false },
-        ];
+          // 1. Target 1: Badges Row
+          if (badgesRowRef.current) {
+            const agent = assign({ target: badgesRowRef.current, label: 'Select Badges' });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildBlock(tl, {
+              containerEl: container,
+              targetEl: badgesRowRef.current,
+              agent,
+              agentIndex: 0,
+              totalAgents: 5,
+              isMobile,
+            });
+            createTargetTrigger(badgesRowRef.current, tl, reset, {
+              rebuildOnReentry,
+              staggerDelay: 0.0,
+            });
+          }
 
-        const measuredTargets = targets.map((t) => {
-          if (!t.el) return null;
-          const bounds = getRelativeBounds(t.el, container);
-          const start = getRandomEdgePosition(containerW, containerH);
-          const agent = assign({ target: t.el, label: t.label, isHeadline: t.isHeadline });
-          return {
-            ...t,
-            bounds,
-            start,
-            agent,
-            box: agent.boxRef.current,
-            cursor: agent.cursorRef.current,
-          };
-        }).filter(Boolean) as (typeof targets[0] & {
-          bounds: { x: number; y: number; width: number; height: number };
-          start: { x: number; y: number };
-          box: HTMLDivElement | null;
-          cursor: HTMLDivElement | null;
-        })[];
+          // 2. Target 2: Headline (SplitText character-by-character typing with hugging box & 0.35 scale-up)
+          if (headlineRef.current) {
+            const agent = assign({ target: headlineRef.current, label: 'Type Headline', isHeadline: true, isIBeam: true });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildText(tl, {
+              containerEl: container,
+              targetEl: headlineRef.current,
+              agent,
+              agentIndex: 1,
+              totalAgents: 5,
+              isHeadline: true,
+              isMobile,
+            });
+            createTargetTrigger(headlineRef.current, tl, reset, {
+              rebuildOnReentry,
+              staggerDelay: 0.08,
+            });
+          }
 
-        // Position cursors at initial off-screen edge origins
-        measuredTargets.forEach((t) => {
-          if (t.cursor) {
-            gsap.set(t.cursor, {
-              x: t.start.x,
-              y: t.start.y,
-              autoAlpha: 1,
+          // 3. Target 3: Bio Paragraph (SplitText character-by-character typing with hugging box)
+          if (bioRef.current) {
+            const agent = assign({ target: bioRef.current, label: 'Format Bio', isParagraph: true, isIBeam: true });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildText(tl, {
+              containerEl: container,
+              targetEl: bioRef.current,
+              agent,
+              agentIndex: 2,
+              totalAgents: 5,
+              isParagraph: true,
+              isMobile,
+            });
+            createTargetTrigger(bioRef.current, tl, reset, {
+              rebuildOnReentry,
+              staggerDelay: 0.16,
+            });
+          }
+
+          // 4. Target 4: CTA Button Row
+          if (ctaRowRef.current) {
+            const agent = assign({ target: ctaRowRef.current, label: 'Resize CTAs' });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildBlock(tl, {
+              containerEl: container,
+              targetEl: ctaRowRef.current,
+              agent,
+              agentIndex: 3,
+              totalAgents: 5,
+              isMobile,
+            });
+            createTargetTrigger(ctaRowRef.current, tl, reset, {
+              rebuildOnReentry,
+              staggerDelay: 0.22,
+            });
+          }
+
+          // 5. Target 5: Spec Telemetry Block + ScrambleText
+          if (specBlockRef.current) {
+            const agent = assign({ target: specBlockRef.current, label: 'Scramble Stats' });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildBlock(tl, {
+              containerEl: container,
+              targetEl: specBlockRef.current,
+              agent,
+              agentIndex: 4,
+              totalAgents: 5,
+              isMobile,
+            });
+
+            const stats = [
+              { ref: statNum1Ref.current, finalVal: 'Full-Stack + SecOps' },
+              { ref: statNum2Ref.current, finalVal: 'Class of 2027' },
+              { ref: statNum3Ref.current, finalVal: '05 Flagship Pipelines' },
+              { ref: statNum4Ref.current, finalVal: 'Summer 2026' },
+            ];
+
+            stats.forEach((st) => {
+              if (st.ref) {
+                tl.to(
+                  st.ref,
+                  {
+                    scrambleText: {
+                      text: st.finalVal,
+                      chars: '0123456789ABCDEF!<>-_/[]{}',
+                      speed: 0.5,
+                    },
+                    duration: 0.75,
+                    ease: 'none',
+                  },
+                  '-=0.2'
+                );
+              }
+            });
+
+            const fullReset = () => {
+              reset();
+              stats.forEach((st) => {
+                if (st.ref) st.ref.textContent = st.finalVal;
+              });
+            };
+
+            createTargetTrigger(specBlockRef.current, tl, fullReset, {
+              rebuildOnReentry,
+              staggerDelay: 0.28,
             });
           }
         });
 
-        // 2. Master Intro Construction Timeline wrapped in ctx.add for context safety
-        ctx.add(() => {
-          const masterTl = gsap.timeline();
-
-          // Fixed viewport guide lines overlay (2-4 H & V lines spanning viewport + red ruler)
-          const cleanupGuideLines = createFixedGuideLinesOverlay(
-            masterTl,
-            [headlineRef.current, bioRef.current, cta1Ref.current, specGridRef.current].filter(Boolean) as HTMLElement[],
-            {
-              showRuler: !isMobile,
-              rulerOffset: isMobile ? 12 : 28,
-              delay: 0.05,
-            }
-          );
-
-          // Animate Each Target Element Concurrently with 40-80ms Stagger
-          measuredTargets.forEach((t, i) => {
-            const { el, box, cursor, bounds, delay, isHeadline } = t;
-            const targetPos = {
-              x: bounds.x + Math.min(16, bounds.width * 0.1),
-              y: bounds.y + Math.min(16, bounds.height * 0.2),
-            };
-
-            // A. Cursor travels along curved path to target bounds with slight overshoot and banking
-            if (cursor) {
-              addCurvedCursorTravel(masterTl, cursor, t.start, targetPos, {
-                duration: 0.75,
-                position: delay,
-                ease: 'back.out(1.2)',
-              });
-            }
-
-            // B. Selection Box starts small at cursor arrival point & resizes to bounds via transforms
-            if (box) {
-              addSelectionBoxBuild(masterTl, box, bounds, targetPos, {
-                delay: delay + 0.22,
-                duration: 0.52,
-                fadeDelay: delay + 0.85,
-                ease: 'expo.out',
-              });
-            }
-
-            // C. Content Reveals inside the box
-            if (el) {
-              if (isHeadline) {
-                headingReveal(masterTl, el, {
-                  duration: 0.75,
-                  position: delay + 0.45,
-                });
-              } else {
-                // Clean alpha & y reveal for badges, bio, CTAs
-                masterTl.fromTo(
-                  el,
-                  {
-                    autoAlpha: 0,
-                    y: 10,
-                  },
-                  {
-                    autoAlpha: 1,
-                    y: 0,
-                    duration: 0.5,
-                    ease: 'power2.out',
-                  },
-                  delay + 0.45
-                );
-              }
-            }
-
-            // D. Cursor idles & drifts gracefully along edges
-            if (cursor) {
-              addCursorIdleDrift(
-                masterTl,
-                cursor,
-                i,
-                measuredTargets.length,
-                containerW,
-                containerH,
-                delay + 1.1
-              );
-            }
-          });
-
-          // Spec Divider Line Reveal
-          if (specDividerRef.current) {
-            masterTl.fromTo(
-              specDividerRef.current,
-              { scaleX: 0, transformOrigin: 'left center', autoAlpha: 0 },
-              { scaleX: 1, autoAlpha: 1, duration: 0.6, ease: 'power2.out' },
-              0.55
-            );
-          }
-
-          // E. Stat Numbers Scramble Animation (using ScrambleTextPlugin for 600-800ms)
-          const stats = [
-            { ref: statNum1Ref.current, finalVal: 'Full-Stack + SecOps' },
-            { ref: statNum2Ref.current, finalVal: 'Class of 2027' },
-            { ref: statNum3Ref.current, finalVal: '05 Flagship Pipelines' },
-            { ref: statNum4Ref.current, finalVal: 'Summer 2026' },
-          ];
-
-          stats.forEach((st) => {
-            if (st.ref) {
-              masterTl.to(
-                st.ref,
-                {
-                  scrambleText: {
-                    text: st.finalVal,
-                    chars: '0123456789ABCDEF!<>-_/[]{}',
-                    speed: 0.5,
-                  },
-                  duration: 0.75,
-                  ease: 'none',
-                },
-                0.65
-              );
-            }
-          });
-
-          return () => {
-            cleanupGuideLines?.();
-          };
-        });
-
-        // Ensure ScrollTrigger recalculates all down-page section triggers accurately
+        // Ensure triggers recalculate immediately
         ScrollTrigger.refresh();
       };
 
@@ -300,9 +252,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
       releaseAll();
       ctx.revert();
     };
-  }, [buildKey, prefersReducedMotion, isMobile]);
-
-  const initialStyle = prefersReducedMotion ? undefined : { opacity: 0, visibility: 'hidden' as const };
+  }, [buildKey, prefersReducedMotion, isMobile, rebuildOnReentry]);
 
   return (
     <section 
@@ -325,10 +275,10 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
       {/* 4. MAIN CONTENT DOM (Kept in layout; measured then revealed) */}
       <div className="flex flex-col gap-8 relative z-10">
         
-        {/* ROW 1: BADGES */}
-        <div className="flex flex-wrap items-center gap-3 text-xs font-mono min-h-[36px]">
+        {/* ROW 1: BADGES (Leaf target) */}
+        <div ref={badgesRowRef} style={initialStyle} className="flex flex-wrap items-center gap-3 text-xs font-mono min-h-[36px]">
           {/* Badge 1: VIT Chennai */}
-          <div ref={badge1Ref} style={initialStyle} className="relative inline-flex">
+          <div className="relative inline-flex">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-black border border-kiwi/50 text-kiwi font-medium shadow-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-kiwi animate-pulse" />
               VIT Chennai &bull; Computer Science
@@ -336,7 +286,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           </div>
 
           {/* Badge 2: Cybersecurity */}
-          <div ref={badge2Ref} style={initialStyle} className="relative inline-flex">
+          <div className="relative inline-flex">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-black border border-kiwi-yellow/50 text-kiwi-yellow font-medium shadow-sm">
               <ShieldCheck size={13} />
               Cybersecurity &bull; ThreatLens
@@ -344,7 +294,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           </div>
 
           {/* Badge 3: Applied AI */}
-          <div ref={badge3Ref} style={initialStyle} className="relative inline-flex">
+          <div className="relative inline-flex">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-black border border-kiwi-chartreuse/50 text-kiwi-chartreuse font-medium shadow-sm">
               <Cpu size={13} />
               Applied AI &bull; FAISS RAG
@@ -375,10 +325,10 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           </div>
         </div>
 
-        {/* ROW 3: CTAS */}
-        <div className="flex flex-wrap items-center gap-3 min-h-[44px]">
+        {/* ROW 3: CTAS (Leaf target) */}
+        <div ref={ctaRowRef} style={initialStyle} className="flex flex-wrap items-center gap-3 min-h-[44px]">
           {/* Primary CTA */}
-          <div ref={cta1Ref} style={initialStyle} className="relative inline-flex">
+          <div className="relative inline-flex">
             <a
               href="#projects"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-kiwi text-black font-semibold text-xs transition-all hover:bg-kiwi/90 shadow-kiwi-glow hover:scale-[1.02]"
@@ -389,7 +339,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           </div>
 
           {/* Secondary CTA */}
-          <div ref={cta2Ref} style={initialStyle} className="relative inline-flex">
+          <div className="relative inline-flex">
             <a
               href="https://github.com/Kishalll"
               target="_blank"
@@ -402,7 +352,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           </div>
 
           {/* Verified Badge */}
-          <div ref={lockRef} style={initialStyle} className="relative hidden sm:inline-flex">
+          <div className="relative hidden sm:inline-flex">
             <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-black/60 border border-zinc-800 text-zinc-400 font-mono text-[11px]">
               <Lock size={12} className="text-kiwi-yellow" />
               <span>P-256 ECDSA Verified</span>
@@ -410,13 +360,13 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           </div>
         </div>
 
-        {/* ROW 4: SPEC FOOTER & SCRAMBLE STATS */}
-        <div className="relative pt-6">
+        {/* ROW 4: SPEC FOOTER & SCRAMBLE STATS (Leaf target) */}
+        <div ref={specBlockRef} style={initialStyle} className="relative pt-6">
           {/* Dividing Ruler Line */}
-          <div ref={specDividerRef} style={initialStyle} className="w-full h-[1px] bg-kiwi-border/80 origin-left" />
+          <div className="w-full h-[1px] bg-kiwi-border/80 origin-left" />
 
           {/* 4 Column Stat Blocks */}
-          <div ref={specGridRef} style={initialStyle} className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono text-zinc-400 mt-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono text-zinc-400 mt-4">
             <div>
               <div className="text-[10px] uppercase tracking-wider text-zinc-500">Focus</div>
               <div className="text-white font-medium mt-0.5">

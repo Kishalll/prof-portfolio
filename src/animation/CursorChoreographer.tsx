@@ -7,6 +7,9 @@ export interface ChoreographerTask {
   target: HTMLElement | null;
   label?: string;
   isHeadline?: boolean;
+  isParagraph?: boolean;
+  isIBeam?: boolean;
+  variant?: 'pointer' | 'ibeam';
   delay?: number;
 }
 
@@ -18,6 +21,7 @@ export interface ChoreographerAgent {
   target: HTMLElement | null;
   label: string;
   isHeadline: boolean;
+  variant: 'pointer' | 'ibeam';
   isBusy: boolean;
   allocatedAt: number;
 }
@@ -42,6 +46,7 @@ export class CursorChoreographer {
       target: null,
       label: persona.name,
       isHeadline: false,
+      variant: 'pointer',
       isBusy: false,
       allocatedAt: 0,
     }));
@@ -61,6 +66,7 @@ export class CursorChoreographer {
     agent.target = task.target;
     agent.label = task.label || agent.persona.name;
     agent.isHeadline = !!task.isHeadline;
+    agent.variant = task.variant || (task.isIBeam ? 'ibeam' : 'pointer');
 
     return agent;
   }
@@ -89,7 +95,7 @@ export class CursorChoreographer {
  * Hook providing a scoped choreographer instance with stable DOM refs for sections
  */
 export function useSectionChoreographer(isMobile: boolean = false) {
-  const poolCap = isMobile ? 4 : 10;
+  const poolCap = isMobile ? 4 : Math.min(12, DEFAULT_PERSONA_POOL.length);
   const personas = useMemo(() => DEFAULT_PERSONA_POOL.slice(0, poolCap), [poolCap]);
 
   // Create stable refs array
@@ -110,6 +116,7 @@ export function useSectionChoreographer(isMobile: boolean = false) {
       target: null,
       label: persona.name,
       isHeadline: false,
+      variant: 'pointer',
       isBusy: false,
       allocatedAt: 0,
     }));
@@ -125,6 +132,7 @@ export function useSectionChoreographer(isMobile: boolean = false) {
     agent.target = task.target;
     agent.label = task.label || agent.persona.name;
     agent.isHeadline = !!task.isHeadline;
+    agent.variant = task.variant || (task.isIBeam ? 'ibeam' : 'pointer');
     return agent;
   }, [agents]);
 
@@ -164,9 +172,11 @@ export const ChoreographerLayer: React.FC<{ agents: ChoreographerAgent[] }> = ({
             ref={agent.cursorRef}
             persona={agent.persona}
             actionLabel={agent.label}
+            variant={agent.variant}
           />
         </React.Fragment>
       ))}
     </>
   );
 };
+

@@ -13,7 +13,7 @@ interface ChoreographerProviderProps {
 
 export const ChoreographerProvider: React.FC<ChoreographerProviderProps> = ({
   children,
-  rebuildOnReentry = false,
+  rebuildOnReentry = true,
 }) => {
   const [replayKey, setReplayKey] = useState<number>(0);
 
@@ -48,7 +48,8 @@ export const ChoreographerProvider: React.FC<ChoreographerProviderProps> = ({
         if (currentlyMobile !== isMobileRef.current) {
           setIsMobile(currentlyMobile);
         }
-      }, 150);
+        ScrollTrigger.refresh();
+      }, 200);
     };
 
     const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');

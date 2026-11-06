@@ -6,7 +6,8 @@ import {
   BookOpen, 
   MessageSquare 
 } from 'lucide-react';
-import { gsap, ScrollTrigger, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition, addCurvedCursorTravel, addSelectionBoxBuild, createFixedGuideLinesOverlay, addCursorIdleDrift, headingReveal } from '../../animation/motionUtils';
+import { gsap, ScrollTrigger, waitForFontsAndLayout } from '../../animation/motionUtils';
+import { buildText, buildBlock, createTargetTrigger } from '../../animation/builders';
 import { useChoreographer } from '../../animation/ChoreographerContext';
 import { useSectionChoreographer, ChoreographerLayer } from '../../animation/CursorChoreographer';
 import { GuideLines } from '../canvas/overlays';
@@ -104,10 +105,6 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
         await waitForFontsAndLayout();
         if (isCancelled || !container) return;
 
-        const containerRect = container.getBoundingClientRect();
-        const containerW = containerRect.width || window.innerWidth;
-        const containerH = containerRect.height || 500;
-
         const allContentElements = [
           headerBadgeRef.current,
           headerTitleRef.current,
@@ -117,174 +114,153 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
           pin2Ref.current,
         ].filter(Boolean) as HTMLElement[];
 
-        const allBoxes = agents.map((a) => a.boxRef.current).filter(Boolean) as HTMLElement[];
-        const allCursors = agents.map((a) => a.cursorRef.current).filter(Boolean) as HTMLElement[];
-
         if (prefersReducedMotion) {
-          gsap.set(allContentElements, { autoAlpha: 1, y: 0, filter: 'none', clipPath: 'none' });
-          gsap.set(allBoxes, { autoAlpha: 0 });
-          gsap.set(allCursors, { autoAlpha: 0 });
+          gsap.set(allContentElements, { autoAlpha: 1, y: 0, scale: 1 });
           return;
         }
 
-        // Keep content in layout but hidden initially
-        gsap.set(allContentElements, { autoAlpha: 0 });
-        gsap.set(allBoxes, { autoAlpha: 0 });
-        gsap.set([hLineRef.current, vLineRef.current], { autoAlpha: 0 });
-
-        // Measure true relative bounds
-        const targets = [
-          { key: 'header', el: headerTitleRef.current, label: 'Select Title', delay: 0.0, isHeadline: true },
-          { key: 'p1', el: pillarRefs[0].current, label: 'Deploy Vector', delay: 0.15, isHeadline: false },
-          { key: 'p2', el: pillarRefs[1].current, label: 'Build CLI', delay: 0.25, isHeadline: false },
-          { key: 'p3', el: pillarRefs[2].current, label: 'Verify Auth', delay: 0.35, isHeadline: false },
-          { key: 'pin1', el: pin1Ref.current, label: 'Mount Pin', delay: 0.45, isHeadline: false },
-          { key: 'pin2', el: pin2Ref.current, label: 'Verify Spec', delay: 0.55, isHeadline: false },
-        ];
-
-        const measured = targets.map((t) => {
-          if (!t.el) return null;
-          const bounds = getRelativeBounds(t.el, container);
-          const start = getRandomEdgePosition(containerW, containerH);
-          const agent = assign({ target: t.el, label: t.label, isHeadline: t.isHeadline });
-          return {
-            ...t,
-            bounds,
-            start,
-            agent,
-            box: agent.boxRef.current,
-            cursor: agent.cursorRef.current,
-          };
-        }).filter(Boolean) as (typeof targets[0] & {
-          bounds: { x: number; y: number; width: number; height: number };
-          start: { x: number; y: number };
-          box: HTMLDivElement | null;
-          cursor: HTMLDivElement | null;
-        })[];
-
-        // Position cursors at initial off-screen edge origins
-        measured.forEach((t) => {
-          if (t.cursor) {
-            gsap.set(t.cursor, { x: t.start.x, y: t.start.y, autoAlpha: 1 });
-          }
-        });
-
-        // Build Master ScrollTrigger Timeline inside ctx.add so GSAP tracks it properly
         ctx.add(() => {
-          const tl = gsap.timeline({
-            scrollTrigger: {
+          // 0. Red Vertical Ruler: onToggle scaling
+          if (rulerRef.current) {
+            gsap.set(rulerRef.current, { scaleY: 0, transformOrigin: 'top center', autoAlpha: 0 });
+            ScrollTrigger.create({
               trigger: container,
-              start: 'top 80%',
-              once: !rebuildOnReentry,
-            },
-          });
-
-        // Fixed viewport guide lines overlay (2-4 H & V lines spanning viewport + red ruler)
-        const cleanupGuideLines = createFixedGuideLinesOverlay(
-          tl,
-          [headerTitleRef.current, pillarRefs[0].current, pillarRefs[1].current, pin1Ref.current].filter(Boolean) as HTMLElement[],
-          {
-            showRuler: !isMobile,
-            rulerOffset: isMobile ? 12 : 28,
-            delay: 0.05,
-          }
-        );
-
-        // Header Badge & Desc
-        if (headerBadgeRef.current) {
-          tl.fromTo(headerBadgeRef.current, { autoAlpha: 0, y: -6 }, { autoAlpha: 1, y: 0, duration: 0.4 }, 0.0);
-        }
-        if (headerDescRef.current) {
-          tl.fromTo(headerDescRef.current, { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: 0.5 }, 0.25);
-        }
-
-        // Build Elements in Parallel with 60-80ms Stagger
-        measured.forEach((t, i) => {
-          const { el, box, cursor, bounds, delay, isHeadline } = t;
-          const targetPos = {
-            x: bounds.x + Math.min(16, bounds.width * 0.1),
-            y: bounds.y + Math.min(16, bounds.height * 0.2),
-          };
-
-          // 1. Cursor enters along curved path with overshoot and banking
-          if (cursor) {
-            addCurvedCursorTravel(tl, cursor, t.start, targetPos, {
-              duration: 0.75,
-              position: delay,
-              ease: 'back.out(1.2)',
+              start: 'top bottom',
+              end: 'bottom top',
+              onToggle: (self) => {
+                gsap.to(rulerRef.current, {
+                  scaleY: self.isActive ? 1 : 0,
+                  autoAlpha: self.isActive ? 0.85 : 0,
+                  duration: 0.6,
+                  ease: 'power2.out',
+                });
+              },
             });
           }
 
-          // 2. Selection Box expands with 8 handles & dimension tag via transforms
-          if (box) {
-            addSelectionBoxBuild(tl, box, bounds, targetPos, {
-              delay: delay + 0.2,
-              duration: 0.5,
-              fadeDelay: delay + 0.75,
-              ease: 'expo.out',
+          // 1. Target: Header Badge
+          if (headerBadgeRef.current) {
+            const agent = assign({ target: headerBadgeRef.current, label: 'Select Badge' });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildBlock(tl, {
+              containerEl: container,
+              targetEl: headerBadgeRef.current,
+              agent,
+              agentIndex: 0,
+              totalAgents: 8,
+              isMobile,
+            });
+            createTargetTrigger(headerBadgeRef.current, tl, reset, {
+              rebuildOnReentry,
+              staggerDelay: 0.0,
             });
           }
 
-          // 3. Content Reveals inside box
-          if (el) {
-            if (isHeadline) {
-              headingReveal(tl, el, {
-                duration: 0.7,
-                position: delay + 0.35,
-              });
-            } else {
-              tl.fromTo(
-                el,
-                { autoAlpha: 0, y: 12 },
-                { autoAlpha: 1, y: 0, duration: 0.45, ease: 'power2.out' },
-                delay + 0.35
+          // 2. Target: Header Title (SplitText typing)
+          if (headerTitleRef.current) {
+            const agent = assign({ target: headerTitleRef.current, label: 'Type Spec Title', isHeadline: true, isIBeam: true });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildText(tl, {
+              containerEl: container,
+              targetEl: headerTitleRef.current,
+              agent,
+              agentIndex: 1,
+              totalAgents: 8,
+              isHeadline: true,
+              isMobile,
+            });
+            createTargetTrigger(headerTitleRef.current, tl, reset, {
+              rebuildOnReentry,
+              staggerDelay: 0.08,
+            });
+          }
+
+          // 3. Target: Header Description (SplitText typing)
+          if (headerDescRef.current) {
+            const agent = assign({ target: headerDescRef.current, label: 'Format Description', isParagraph: true, isIBeam: true });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildText(tl, {
+              containerEl: container,
+              targetEl: headerDescRef.current,
+              agent,
+              agentIndex: 2,
+              totalAgents: 8,
+              isParagraph: true,
+              isMobile,
+            });
+            createTargetTrigger(headerDescRef.current, tl, reset, {
+              rebuildOnReentry,
+              staggerDelay: 0.14,
+            });
+          }
+
+          // 4. Targets: 3 Architectural Pillars
+          pillarRefs.forEach((pRef, idx) => {
+            const el = pRef.current;
+            if (!el) return;
+            const agent = assign({ target: el, label: PILLARS_DATA[idx]?.actionLabel || 'Assemble Pillar' });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildBlock(tl, {
+              containerEl: container,
+              targetEl: el,
+              agent,
+              agentIndex: 3 + idx,
+              totalAgents: 8,
+              isMobile,
+            });
+
+            const numSpan = pillarNumRefs[idx]?.current;
+            if (numSpan) {
+              tl.to(
+                numSpan,
+                {
+                  scrambleText: {
+                    text: `0${idx + 1}`,
+                    chars: '0123456789',
+                    speed: 0.5,
+                  },
+                  duration: 0.7,
+                  ease: 'none',
+                },
+                '-=0.2'
               );
             }
-          }
 
-          // 4. Cursor drifts gently to edge
-          if (cursor) {
-            addCursorIdleDrift(
-              tl,
-              cursor,
-              i,
-              measured.length,
-              containerW,
-              containerH,
-              delay + 1.0
-            );
-          }
+            const fullReset = () => {
+              reset();
+              if (numSpan) numSpan.textContent = `0${idx + 1}`;
+            };
+
+            createTargetTrigger(el, tl, fullReset, {
+              rebuildOnReentry,
+              staggerDelay: idx * 0.08,
+            });
+          });
+
+          // 5. Targets: 2 Note Pins
+          [pin1Ref.current, pin2Ref.current].forEach((pinEl, pIdx) => {
+            if (!pinEl) return;
+            const agent = assign({ target: pinEl, label: pIdx === 0 ? 'Mount Reading' : 'Verify Feedback' });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildBlock(tl, {
+              containerEl: container,
+              targetEl: pinEl,
+              agent,
+              agentIndex: 6 + pIdx,
+              totalAgents: 8,
+              isMobile,
+            });
+            createTargetTrigger(pinEl, tl, reset, {
+              rebuildOnReentry,
+              staggerDelay: pIdx * 0.08,
+            });
+          });
         });
 
-        // 5. Scramble numbers for pillars ('01', '02', '03')
-        pillarNumRefs.forEach((nr, idx) => {
-          if (nr.current) {
-            tl.to(
-              nr.current,
-              {
-                scrambleText: {
-                  text: `0${idx + 1}`,
-                  chars: '0123456789',
-                  speed: 0.5,
-                },
-                duration: 0.7,
-                ease: 'none',
-              },
-              0.3 + idx * 0.1
-            );
-          }
-        });
+        ScrollTrigger.refresh();
+      };
 
-        return () => {
-          cleanupGuideLines?.();
-        };
-      });
-
-      // Ensure ScrollTrigger updates trigger metrics after DOM calculations
-      ScrollTrigger.refresh();
-    };
-
-    initScrollBuild();
+      initScrollBuild();
     }, container);
 
     return () => {

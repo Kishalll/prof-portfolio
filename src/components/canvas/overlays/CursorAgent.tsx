@@ -4,12 +4,13 @@ import { AgentPersona } from '../../../animation/types';
 interface CursorAgentProps {
   persona: AgentPersona;
   actionLabel?: string;
+  variant?: 'pointer' | 'ibeam';
   className?: string;
   style?: React.CSSProperties;
 }
 
 export const CursorAgent = forwardRef<HTMLDivElement, CursorAgentProps>(
-  ({ persona, actionLabel, className = '', style }, ref) => {
+  ({ persona, actionLabel, variant = 'pointer', className = '', style }, ref) => {
     return (
       <div
         ref={ref}
@@ -22,21 +23,38 @@ export const CursorAgent = forwardRef<HTMLDivElement, CursorAgentProps>(
         }}
         aria-hidden="true"
       >
-        {/* SVG Cursor Pointer Arrow */}
-        <svg
-          className="w-4 h-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]"
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path
-            d="M3 1L21 13.5L13.5 15L9.5 23L6.5 21.5L10.5 14L3 1Z"
-            fill={persona.color}
-            stroke="#000000"
-            strokeWidth="1.5"
-            strokeLinejoin="round"
-          />
-        </svg>
+        {/* SVG Cursor Pointer or I-Beam */}
+        {variant === 'ibeam' ? (
+          <svg
+            className="w-4 h-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)] cursor-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M7 4H17M12 4V20M7 20H17"
+              stroke={persona.color}
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        ) : (
+          <svg
+            className="w-4 h-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)] cursor-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M3 1L21 13.5L13.5 15L9.5 23L6.5 21.5L10.5 14L3 1Z"
+              fill={persona.color}
+              stroke="#000000"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+          </svg>
+        )}
 
         {/* Persona Name Pill + Optional Action Tag */}
         <div className="flex items-center gap-1.5 ml-2 mt-0.5">

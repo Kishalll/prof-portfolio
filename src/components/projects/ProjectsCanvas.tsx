@@ -9,7 +9,8 @@ import {
   FolderGit2,
   ExternalLink
 } from 'lucide-react';
-import { gsap, ScrollTrigger, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition, addCurvedCursorTravel, addSelectionBoxBuild, createFixedGuideLinesOverlay, addCursorIdleDrift, headingReveal } from '../../animation/motionUtils';
+import { gsap, ScrollTrigger, waitForFontsAndLayout } from '../../animation/motionUtils';
+import { buildText, buildBlock, createTargetTrigger } from '../../animation/builders';
 import { useChoreographer } from '../../animation/ChoreographerContext';
 import { useSectionChoreographer, ChoreographerLayer } from '../../animation/CursorChoreographer';
 import { GuideLines } from '../canvas/overlays';
@@ -171,10 +172,6 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
         await waitForFontsAndLayout();
         if (isCancelled || !container) return;
 
-        const containerRect = container.getBoundingClientRect();
-        const containerW = containerRect.width || window.innerWidth;
-        const containerH = containerRect.height || 800;
-
         const allContentElements = [
           headerBadgeRef.current,
           headerTitleRef.current,
@@ -182,189 +179,160 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
           ...cardRefs.map((r) => r.current),
         ].filter(Boolean) as HTMLElement[];
 
-        const allBoxes = agents.map((a) => a.boxRef.current).filter(Boolean) as HTMLElement[];
-        const allCursors = agents.map((a) => a.cursorRef.current).filter(Boolean) as HTMLElement[];
-
         if (prefersReducedMotion) {
-          gsap.set(allContentElements, { autoAlpha: 1, y: 0, filter: 'none', clipPath: 'none' });
-          gsap.set(allBoxes, { autoAlpha: 0 });
-          gsap.set(allCursors, { autoAlpha: 0 });
+          gsap.set(allContentElements, { autoAlpha: 1, y: 0, scale: 1 });
           return;
         }
 
-        // Hide content initially in layout
-        gsap.set(allContentElements, { autoAlpha: 0 });
-        gsap.set(allBoxes, { autoAlpha: 0 });
-
-        const targets = [
-          { key: 'header', el: headerTitleRef.current, label: 'Select Projects', delay: 0.0, isHeadline: true },
-          { key: 'p0', el: cardRefs[0].current, label: 'ThreatLens Frame', delay: 0.15, isHeadline: false },
-          { key: 'p1', el: cardRefs[1].current, label: 'HyprPilot Frame', delay: 0.25, isHeadline: false },
-          { key: 'p2', el: cardRefs[2].current, label: 'FastFrwd Frame', delay: 0.35, isHeadline: false },
-          { key: 'p3', el: cardRefs[3].current, label: 'PromptWars Frame', delay: 0.45, isHeadline: false },
-          { key: 'p4', el: cardRefs[4].current, label: 'eGateway Frame', delay: 0.55, isHeadline: false },
-        ];
-
-        const measured = targets.map((t) => {
-          if (!t.el) return null;
-          const bounds = getRelativeBounds(t.el, container);
-          const start = getRandomEdgePosition(containerW, containerH);
-          const agent = assign({ target: t.el, label: t.label, isHeadline: t.isHeadline });
-          return {
-            ...t,
-            bounds,
-            start,
-            agent,
-            box: agent.boxRef.current,
-            cursor: agent.cursorRef.current,
-          };
-        }).filter(Boolean) as (typeof targets[0] & {
-          bounds: { x: number; y: number; width: number; height: number };
-          start: { x: number; y: number };
-          box: HTMLDivElement | null;
-          cursor: HTMLDivElement | null;
-        })[];
-
-        // Position cursors at initial off-screen edges
-        measured.forEach((t) => {
-          if (t.cursor) {
-            gsap.set(t.cursor, { x: t.start.x, y: t.start.y, autoAlpha: 1 });
-          }
-        });
-
-        // Master ScrollTrigger Timeline
         ctx.add(() => {
-          const tl = gsap.timeline({
-            scrollTrigger: {
+          // 0. Red Ruler onToggle
+          const rulerEl = container.querySelector('.bg-\\[\\#FF3B30\\]');
+          if (rulerEl) {
+            gsap.set(rulerEl, { scaleY: 0, transformOrigin: 'top center', autoAlpha: 0 });
+            ScrollTrigger.create({
               trigger: container,
-              start: 'top 80%',
-              once: !rebuildOnReentry,
-            },
-          });
-
-        // Fixed viewport guide lines overlay (2-4 H & V lines spanning viewport + red ruler)
-        const cleanupGuideLines = createFixedGuideLinesOverlay(
-          tl,
-          [headerTitleRef.current, cardRefs[0].current, cardRefs[1].current, cardRefs[2].current].filter(Boolean) as HTMLElement[],
-          {
-            showRuler: !isMobile,
-            rulerOffset: isMobile ? 12 : 28,
-            delay: 0.05,
-          }
-        );
-
-        // Header badge & desc
-        if (headerBadgeRef.current) {
-          tl.fromTo(headerBadgeRef.current, { autoAlpha: 0, y: -6 }, { autoAlpha: 1, y: 0, duration: 0.4 }, 0.0);
-        }
-        if (headerDescRef.current) {
-          tl.fromTo(headerDescRef.current, { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: 0.5 }, 0.2);
-        }
-
-        // Stat Scramble: Header Badge Year
-        if (headerBadgeTextRef.current) {
-          tl.to(
-            headerBadgeTextRef.current,
-            {
-              scrambleText: {
-                text: 'Selected Engineering Works • 2025–2026',
-                chars: '0123456789ABCDEF!<>-_/[]{}',
-                speed: 0.5,
+              start: 'top bottom',
+              end: 'bottom top',
+              onToggle: (self) => {
+                gsap.to(rulerEl, {
+                  scaleY: self.isActive ? 1 : 0,
+                  autoAlpha: self.isActive ? 0.85 : 0,
+                  duration: 0.6,
+                  ease: 'power2.out',
+                });
               },
-              duration: 0.75,
-              ease: 'none',
-            },
-            0.15
-          );
-        }
+            });
+          }
 
-        // Stat Scramble: Project Card Badges
-        PROJECTS_DATA.forEach((proj, idx) => {
-          if (badgeRefs[idx].current) {
-            tl.to(
-              badgeRefs[idx].current,
-              {
-                scrambleText: {
-                  text: proj.badge,
-                  chars: '0123456789ABCDEF!<>-_/[]{}',
-                  speed: 0.5,
+          // 1. Target: Header Badge
+          if (headerBadgeRef.current) {
+            const agent = assign({ target: headerBadgeRef.current, label: 'Select Badge' });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildBlock(tl, {
+              containerEl: container,
+              targetEl: headerBadgeRef.current,
+              agent,
+              agentIndex: 0,
+              totalAgents: 8,
+              isMobile,
+            });
+
+            if (headerBadgeTextRef.current) {
+              tl.to(
+                headerBadgeTextRef.current,
+                {
+                  scrambleText: {
+                    text: 'Selected Engineering Works • 2025–2026',
+                    chars: '0123456789ABCDEF!<>-_/[]{}',
+                    speed: 0.5,
+                  },
+                  duration: 0.75,
+                  ease: 'none',
                 },
-                duration: 0.7,
-                ease: 'none',
-              },
-              0.25 + idx * 0.1
-            );
-          }
-        });
-
-        // Concurrently build cards with 60ms stagger
-        measured.forEach((t, i) => {
-          const { el, box, cursor, bounds, delay, isHeadline } = t;
-          const targetPos = {
-            x: bounds.x + Math.min(16, bounds.width * 0.1),
-            y: bounds.y + Math.min(16, bounds.height * 0.2),
-          };
-
-          // 1. Cursor enters along curved path with overshoot and banking
-          if (cursor) {
-            addCurvedCursorTravel(tl, cursor, t.start, targetPos, {
-              duration: 0.75,
-              position: delay,
-              ease: 'back.out(1.2)',
-            });
-          }
-
-          // 2. Selection Box expands with 8 handles via transforms
-          if (box) {
-            addSelectionBoxBuild(tl, box, bounds, targetPos, {
-              delay: delay + 0.2,
-              duration: 0.52,
-              fadeDelay: delay + 0.8,
-              ease: 'expo.out',
-            });
-          }
-
-          // 3. Card reveals inside box
-          if (el) {
-            if (isHeadline) {
-              headingReveal(tl, el, {
-                duration: 0.7,
-                position: delay + 0.35,
-              });
-            } else {
-              tl.fromTo(
-                el,
-                { autoAlpha: 0, y: 14 },
-                { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power2.out' },
-                delay + 0.35
+                '-=0.2'
               );
             }
+
+            const fullReset = () => {
+              reset();
+              if (headerBadgeTextRef.current) {
+                headerBadgeTextRef.current.textContent = 'Selected Engineering Works • 2025–2026';
+              }
+            };
+
+            createTargetTrigger(headerBadgeRef.current, tl, fullReset, {
+              rebuildOnReentry,
+              staggerDelay: 0.0,
+            });
           }
 
-          // 4. Cursor idles & drifts to edge
-          if (cursor) {
-            addCursorIdleDrift(
-              tl,
-              cursor,
-              i,
-              measured.length,
-              containerW,
-              containerH,
-              delay + 1.0
-            );
+          // 2. Target: Header Title (SplitText typing)
+          if (headerTitleRef.current) {
+            const agent = assign({ target: headerTitleRef.current, label: 'Type Title', isHeadline: true, isIBeam: true });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildText(tl, {
+              containerEl: container,
+              targetEl: headerTitleRef.current,
+              agent,
+              agentIndex: 1,
+              totalAgents: 8,
+              isHeadline: true,
+              isMobile,
+            });
+            createTargetTrigger(headerTitleRef.current, tl, reset, {
+              rebuildOnReentry,
+              staggerDelay: 0.08,
+            });
           }
+
+          // 3. Target: Header Desc (SplitText typing)
+          if (headerDescRef.current) {
+            const agent = assign({ target: headerDescRef.current, label: 'Format Bio', isParagraph: true, isIBeam: true });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildText(tl, {
+              containerEl: container,
+              targetEl: headerDescRef.current,
+              agent,
+              agentIndex: 2,
+              totalAgents: 8,
+              isParagraph: true,
+              isMobile,
+            });
+            createTargetTrigger(headerDescRef.current, tl, reset, {
+              rebuildOnReentry,
+              staggerDelay: 0.14,
+            });
+          }
+
+          // 4. Targets: 5 Project Cards
+          cardRefs.forEach((cRef, idx) => {
+            const cardEl = cRef.current;
+            if (!cardEl) return;
+            const proj = PROJECTS_DATA[idx];
+            const agent = assign({ target: cardEl, label: proj.actionLabel });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildBlock(tl, {
+              containerEl: container,
+              targetEl: cardEl,
+              agent,
+              agentIndex: 3 + (idx % 5),
+              totalAgents: 8,
+              isMobile,
+            });
+
+            const badgeSpan = badgeRefs[idx].current;
+            if (badgeSpan) {
+              tl.to(
+                badgeSpan,
+                {
+                  scrambleText: {
+                    text: proj.badge,
+                    chars: '0123456789ABCDEF!<>-_/[]{}',
+                    speed: 0.5,
+                  },
+                  duration: 0.7,
+                  ease: 'none',
+                },
+                '-=0.2'
+              );
+            }
+
+            const fullReset = () => {
+              reset();
+              if (badgeSpan) badgeSpan.textContent = proj.badge;
+            };
+
+            createTargetTrigger(cardEl, tl, fullReset, {
+              rebuildOnReentry,
+              staggerDelay: (idx % 2) * 0.08,
+            });
+          });
         });
 
-        return () => {
-          cleanupGuideLines?.();
-        };
-      });
+        ScrollTrigger.refresh();
+      };
 
-      // Ensure ScrollTrigger updates trigger metrics after DOM calculations
-      ScrollTrigger.refresh();
-    };
-
-    initScrollBuild();
+      initScrollBuild();
     }, container);
 
     return () => {

@@ -10,7 +10,8 @@ import {
   ArrowUpRight,
   MessageSquareCode
 } from 'lucide-react';
-import { gsap, ScrollTrigger, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition, addCurvedCursorTravel, addSelectionBoxBuild, createFixedGuideLinesOverlay, addCursorIdleDrift, headingReveal } from '../../animation/motionUtils';
+import { gsap, ScrollTrigger, waitForFontsAndLayout } from '../../animation/motionUtils';
+import { buildText, buildBlock, createTargetTrigger } from '../../animation/builders';
 import { useChoreographer } from '../../animation/ChoreographerContext';
 import { useSectionChoreographer, ChoreographerLayer } from '../../animation/CursorChoreographer';
 import { GuideLines } from '../canvas/overlays';
@@ -84,10 +85,6 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
         await waitForFontsAndLayout();
         if (isCancelled || !container) return;
 
-        const containerRect = container.getBoundingClientRect();
-        const containerW = containerRect.width || window.innerWidth;
-        const containerH = containerRect.height || 600;
-
         const allContentElements = [
           headerBadgeRef.current,
           headerTitleRef.current,
@@ -96,199 +93,184 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
           composerCardRef.current,
         ].filter(Boolean) as HTMLElement[];
 
-        const allBoxes = agents.map((a) => a.boxRef.current).filter(Boolean) as HTMLElement[];
-        const allCursors = agents.map((a) => a.cursorRef.current).filter(Boolean) as HTMLElement[];
-
         if (prefersReducedMotion) {
-          gsap.set(allContentElements, { autoAlpha: 1, y: 0, filter: 'none', clipPath: 'none' });
-          gsap.set(allBoxes, { autoAlpha: 0 });
-          gsap.set(allCursors, { autoAlpha: 0 });
+          gsap.set(allContentElements, { autoAlpha: 1, y: 0, scale: 1 });
           return;
         }
 
-        // Hide content initially in layout
-        gsap.set(allContentElements, { autoAlpha: 0 });
-        gsap.set(allBoxes, { autoAlpha: 0 });
-
-        const targets = [
-          { key: 'header', el: headerTitleRef.current, label: 'Select Contact', delay: 0.0, isHeadline: true },
-          { key: 'leftCol', el: leftColRef.current, label: 'Direct Channels', delay: 0.18, isHeadline: false },
-          { key: 'composer', el: composerCardRef.current, label: 'Message Board', delay: 0.32, isHeadline: false },
-        ];
-
-        const measured = targets.map((t) => {
-          if (!t.el) return null;
-          const bounds = getRelativeBounds(t.el, container);
-          const start = getRandomEdgePosition(containerW, containerH);
-          const agent = assign({ target: t.el, label: t.label, isHeadline: t.isHeadline });
-          return {
-            ...t,
-            bounds,
-            start,
-            agent,
-            box: agent.boxRef.current,
-            cursor: agent.cursorRef.current,
-          };
-        }).filter(Boolean) as (typeof targets[0] & {
-          bounds: { x: number; y: number; width: number; height: number };
-          start: { x: number; y: number };
-          box: HTMLDivElement | null;
-          cursor: HTMLDivElement | null;
-        })[];
-
-        // Position cursors at initial off-screen edges
-        measured.forEach((t) => {
-          if (t.cursor) {
-            gsap.set(t.cursor, { x: t.start.x, y: t.start.y, autoAlpha: 1 });
-          }
-        });
-
-        // Master ScrollTrigger Timeline
         ctx.add(() => {
-          const tl = gsap.timeline({
-            scrollTrigger: {
+          // 0. Red Ruler onToggle
+          const rulerEl = container.querySelector('.bg-\\[\\#FF3B30\\]');
+          if (rulerEl) {
+            gsap.set(rulerEl, { scaleY: 0, transformOrigin: 'top center', autoAlpha: 0 });
+            ScrollTrigger.create({
               trigger: container,
-              start: 'top 80%',
-              once: !rebuildOnReentry,
-            },
-          });
-
-        // Fixed viewport guide lines overlay (2-4 H & V lines spanning viewport + red ruler)
-        const cleanupGuideLines = createFixedGuideLinesOverlay(
-          tl,
-          [headerTitleRef.current, leftColRef.current, composerCardRef.current].filter(Boolean) as HTMLElement[],
-          {
-            showRuler: !isMobile,
-            rulerOffset: isMobile ? 12 : 28,
-            delay: 0.05,
-          }
-        );
-
-        // Header badge & desc
-        if (headerBadgeRef.current) {
-          tl.fromTo(headerBadgeRef.current, { autoAlpha: 0, y: -6 }, { autoAlpha: 1, y: 0, duration: 0.4 }, 0.0);
-        }
-        if (headerDescRef.current) {
-          tl.fromTo(headerDescRef.current, { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: 0.5 }, 0.2);
-        }
-
-        // Stat Scramble: Verified tag, status, academic year
-        if (verifiedBadgeRef.current) {
-          tl.to(
-            verifiedBadgeRef.current,
-            {
-              scrambleText: {
-                text: 'P-256 Verified',
-                chars: '0123456789ABCDEF!<>-_/[]{}',
-                speed: 0.5,
+              start: 'top bottom',
+              end: 'bottom top',
+              onToggle: (self) => {
+                gsap.to(rulerEl, {
+                  scaleY: self.isActive ? 1 : 0,
+                  autoAlpha: self.isActive ? 0.85 : 0,
+                  duration: 0.6,
+                  ease: 'power2.out',
+                });
               },
-              duration: 0.65,
-              ease: 'none',
-            },
-            0.3
-          );
-        }
-
-        if (statusPillRef.current) {
-          tl.to(
-            statusPillRef.current,
-            {
-              scrambleText: {
-                text: 'Status: Available for Q2/Q3 2026 Internships',
-                chars: '0123456789ABCDEF!<>-_/[]{}',
-                speed: 0.5,
-              },
-              duration: 0.75,
-              ease: 'none',
-            },
-            0.35
-          );
-        }
-
-        if (academicYearRef.current) {
-          tl.to(
-            academicYearRef.current,
-            {
-              scrambleText: {
-                text: '3rd Year (Class of 2027)',
-                chars: '0123456789ABCDEF!<>-_/[]{}',
-                speed: 0.5,
-              },
-              duration: 0.65,
-              ease: 'none',
-            },
-            0.4
-          );
-        }
-
-        // Concurrently build targets
-        measured.forEach((t, i) => {
-          const { el, box, cursor, bounds, delay, isHeadline } = t;
-          const targetPos = {
-            x: bounds.x + Math.min(16, bounds.width * 0.1),
-            y: bounds.y + Math.min(16, bounds.height * 0.2),
-          };
-
-          // 1. Cursor enters along curved path with overshoot and banking
-          if (cursor) {
-            addCurvedCursorTravel(tl, cursor, t.start, targetPos, {
-              duration: 0.75,
-              position: delay,
-              ease: 'back.out(1.2)',
             });
           }
 
-          // 2. Selection Box expands with 8 handles via transforms
-          if (box) {
-            addSelectionBoxBuild(tl, box, bounds, targetPos, {
-              delay: delay + 0.2,
-              duration: 0.52,
-              fadeDelay: delay + 0.8,
-              ease: 'expo.out',
+          // 1. Target: Header Badge
+          if (headerBadgeRef.current) {
+            const agent = assign({ target: headerBadgeRef.current, label: 'Select Badge' });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildBlock(tl, {
+              containerEl: container,
+              targetEl: headerBadgeRef.current,
+              agent,
+              agentIndex: 0,
+              totalAgents: 6,
+              isMobile,
+            });
+            createTargetTrigger(headerBadgeRef.current, tl, reset, {
+              rebuildOnReentry,
+              staggerDelay: 0.0,
             });
           }
 
-          // 3. Target reveals inside box
-          if (el) {
-            if (isHeadline) {
-              headingReveal(tl, el, {
-                duration: 0.7,
-                position: delay + 0.35,
-              });
-            } else {
-              tl.fromTo(
-                el,
-                { autoAlpha: 0, y: 14 },
-                { autoAlpha: 1, y: 0, duration: 0.5, ease: 'power2.out' },
-                delay + 0.35
+          // 2. Target: Header Title (SplitText typing)
+          if (headerTitleRef.current) {
+            const agent = assign({ target: headerTitleRef.current, label: 'Type Contact Title', isHeadline: true, isIBeam: true });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildText(tl, {
+              containerEl: container,
+              targetEl: headerTitleRef.current,
+              agent,
+              agentIndex: 1,
+              totalAgents: 6,
+              isHeadline: true,
+              isMobile,
+            });
+            createTargetTrigger(headerTitleRef.current, tl, reset, {
+              rebuildOnReentry,
+              staggerDelay: 0.08,
+            });
+          }
+
+          // 3. Target: Header Desc (SplitText typing)
+          if (headerDescRef.current) {
+            const agent = assign({ target: headerDescRef.current, label: 'Format Description', isParagraph: true, isIBeam: true });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildText(tl, {
+              containerEl: container,
+              targetEl: headerDescRef.current,
+              agent,
+              agentIndex: 2,
+              totalAgents: 6,
+              isParagraph: true,
+              isMobile,
+            });
+            createTargetTrigger(headerDescRef.current, tl, reset, {
+              rebuildOnReentry,
+              staggerDelay: 0.14,
+            });
+          }
+
+          // 4. Target: Left Column (Direct Channels + ScrambleText)
+          if (leftColRef.current) {
+            const agent = assign({ target: leftColRef.current, label: 'Mount Channels' });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildBlock(tl, {
+              containerEl: container,
+              targetEl: leftColRef.current,
+              agent,
+              agentIndex: 3,
+              totalAgents: 6,
+              isMobile,
+            });
+
+            if (verifiedBadgeRef.current) {
+              tl.to(
+                verifiedBadgeRef.current,
+                {
+                  scrambleText: {
+                    text: 'P-256 Verified',
+                    chars: '0123456789ABCDEF!<>-_/[]{}',
+                    speed: 0.5,
+                  },
+                  duration: 0.65,
+                  ease: 'none',
+                },
+                '-=0.2'
               );
             }
+
+            if (statusPillRef.current) {
+              tl.to(
+                statusPillRef.current,
+                {
+                  scrambleText: {
+                    text: 'Status: Available for Q2/Q3 2026 Internships',
+                    chars: '0123456789ABCDEF!<>-_/[]{}',
+                    speed: 0.5,
+                  },
+                  duration: 0.75,
+                  ease: 'none',
+                },
+                '-=0.15'
+              );
+            }
+
+            if (academicYearRef.current) {
+              tl.to(
+                academicYearRef.current,
+                {
+                  scrambleText: {
+                    text: '3rd Year (Class of 2027)',
+                    chars: '0123456789ABCDEF!<>-_/[]{}',
+                    speed: 0.5,
+                  },
+                  duration: 0.65,
+                  ease: 'none',
+                },
+                '-=0.15'
+              );
+            }
+
+            const fullReset = () => {
+              reset();
+              if (verifiedBadgeRef.current) verifiedBadgeRef.current.textContent = 'P-256 Verified';
+              if (statusPillRef.current) statusPillRef.current.textContent = 'Status: Available for Q2/Q3 2026 Internships';
+              if (academicYearRef.current) academicYearRef.current.textContent = '3rd Year (Class of 2027)';
+            };
+
+            createTargetTrigger(leftColRef.current, tl, fullReset, {
+              rebuildOnReentry,
+              staggerDelay: 0.06,
+            });
           }
 
-          // 4. Cursor idles & drifts to edge
-          if (cursor) {
-            addCursorIdleDrift(
-              tl,
-              cursor,
-              i,
-              measured.length,
-              containerW,
-              containerH,
-              delay + 1.0
-            );
+          // 5. Target: Composer Card (Message Board)
+          if (composerCardRef.current) {
+            const agent = assign({ target: composerCardRef.current, label: 'Mount Composer' });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildBlock(tl, {
+              containerEl: container,
+              targetEl: composerCardRef.current,
+              agent,
+              agentIndex: 4,
+              totalAgents: 6,
+              isMobile,
+            });
+            createTargetTrigger(composerCardRef.current, tl, reset, {
+              rebuildOnReentry,
+              staggerDelay: 0.12,
+            });
           }
         });
 
-        return () => {
-          cleanupGuideLines?.();
-        };
-      });
+        ScrollTrigger.refresh();
+      };
 
-      // Ensure ScrollTrigger updates trigger metrics after DOM calculations
-      ScrollTrigger.refresh();
-    };
-
-    initScrollBuild();
+      initScrollBuild();
     }, container);
 
     return () => {

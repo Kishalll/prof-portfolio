@@ -1,10 +1,10 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { 
-  Github, 
-  Linkedin, 
-  Mail, 
   Grid,
-  RotateCcw
+  RotateCcw,
+  Github,
+  Linkedin,
+  Mail
 } from 'lucide-react';
 import { gsap, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition, addCurvedCursorTravel, addSelectionBoxBuild, addCursorIdleDrift } from '../../animation/motionUtils';
 import { useChoreographer } from '../../animation/ChoreographerContext';
@@ -92,7 +92,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
           // 1. Cursor enters along curved path
           if (cursorRef.current) {
             addCurvedCursorTravel(tl, cursorRef.current, start, targetPos, {
-              duration: 0.65,
+              duration: 0.75,
               position: 0.05,
               ease: 'back.out(1.2)',
             });
@@ -102,8 +102,8 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
           if (boxRef.current) {
             addSelectionBoxBuild(tl, boxRef.current, bounds, targetPos, {
               delay: 0.22,
-              duration: 0.5,
-              fadeDelay: 0.85,
+              duration: 0.55,
+              fadeDelay: 0.95,
               ease: 'expo.out',
             });
           }
@@ -113,17 +113,18 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
             tl.fromTo(
               brandRef.current,
               { autoAlpha: 0, x: -8 },
-              { autoAlpha: 1, x: 0, duration: 0.4, ease: 'power2.out' },
+              { autoAlpha: 1, x: 0, duration: 0.45, ease: 'power2.out' },
               0.45
             );
           }
 
-          // 4. Nav items reveal with stagger
+          // 4. Nav items reveal sequentially with stagger (Item 20 & 27)
           if (navRef.current && navRef.current.children.length > 0) {
+            const links = Array.from(navRef.current.children) as HTMLElement[];
             tl.fromTo(
-              Array.from(navRef.current.children),
-              { autoAlpha: 0, y: -6 },
-              { autoAlpha: 1, y: 0, duration: 0.35, stagger: 0.05, ease: 'power2.out' },
+              links,
+              { autoAlpha: 0, y: -4 },
+              { autoAlpha: 1, y: 0, duration: 0.3, stagger: 0.06, ease: 'power2.out' },
               0.55
             );
           }
@@ -134,7 +135,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
               actionsRef.current,
               { autoAlpha: 0, x: 8 },
               { autoAlpha: 1, x: 0, duration: 0.4, ease: 'power2.out' },
-              0.6
+              0.65
             );
           }
 
@@ -147,7 +148,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
               2,
               containerW,
               containerH,
-              0.9
+              1.0
             );
           }
         });
