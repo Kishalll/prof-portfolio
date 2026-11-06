@@ -1,47 +1,73 @@
-import { useEffect, useState, useMemo } from 'react';
-import { CollaborativeCursor } from './CollaborativeCursor';
+import React from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useMousePosition } from '../../hooks/useMousePosition';
 import { CursorPersona } from '../../types/cursor';
 
-const SWARM_PERSONAS: CursorPersona[] = [
+const SWARM_PERSONAS: (CursorPersona & {
+  offsetX: number;
+  offsetY: number;
+  stiffness: number;
+  damping: number;
+})[] = [
   {
     id: 'dev-kishal',
     name: 'Dev [Kishal]',
     role: 'Lead Architect',
-    color: '#CCFF00', // Electric Kiwi Lime
-    accentBg: '#12140D',
-    textColor: '#CCFF00',
-  },
-  {
-    id: 'ui-ux',
-    name: 'UI_Design',
-    role: 'Layout & Auto-Layout',
     color: '#CCFF00',
     accentBg: '#12140D',
     textColor: '#CCFF00',
+    offsetX: 28,
+    offsetY: 20,
+    stiffness: 320,
+    damping: 26,
   },
   {
     id: 'secops',
     name: 'SecOps',
-    role: 'Security & Verification',
-    color: '#FFFF00', // Electric Yellow
+    role: 'Security & Auth',
+    color: '#FFFF00',
     accentBg: '#14140D',
     textColor: '#FFFF00',
+    offsetX: -34,
+    offsetY: 28,
+    stiffness: 280,
+    damping: 24,
   },
   {
     id: 'ai-rag',
-    name: 'AI_Agent [RAG]',
+    name: 'AI_Agent',
     role: 'Vector Embeddings',
-    color: '#DFFF00', // Chartreuse
+    color: '#DFFF00',
     accentBg: '#13140D',
     textColor: '#DFFF00',
+    offsetX: 42,
+    offsetY: -20,
+    stiffness: 260,
+    damping: 22,
   },
   {
     id: 'kernel',
     name: 'Kernel [Linux]',
-    role: 'Systems & Tooling',
+    role: 'Systems Tooling',
     color: '#DFFF00',
     accentBg: '#13140D',
     textColor: '#DFFF00',
+    offsetX: -40,
+    offsetY: -24,
+    stiffness: 240,
+    damping: 20,
+  },
+  {
+    id: 'ui-ux',
+    name: 'UI_Design',
+    role: 'Auto-Layout',
+    color: '#CCFF00',
+    accentBg: '#12140D',
+    textColor: '#CCFF00',
+    offsetX: -22,
+    offsetY: 46,
+    stiffness: 220,
+    damping: 19,
   },
   {
     id: 'qa-audit',
@@ -50,6 +76,10 @@ const SWARM_PERSONAS: CursorPersona[] = [
     color: '#FFFF00',
     accentBg: '#14140D',
     textColor: '#FFFF00',
+    offsetX: 46,
+    offsetY: 36,
+    stiffness: 200,
+    damping: 18,
   },
   {
     id: 'reviewer',
@@ -58,178 +88,99 @@ const SWARM_PERSONAS: CursorPersona[] = [
     color: '#FFFFFF',
     accentBg: '#1A1A1A',
     textColor: '#FFFFFF',
+    offsetX: 18,
+    offsetY: -42,
+    stiffness: 190,
+    damping: 17,
   },
 ];
 
-interface CursorState {
-  x: number;
-  y: number;
-  actionText?: string;
-  isDrawing?: boolean;
+interface CursorSwarmEngineProps {
+  followingIds?: string[];
 }
 
-export const CursorSwarmEngine = () => {
-  const [scrollY, setScrollY] = useState(0);
-  const [viewportWidth, setViewportWidth] = useState(
-    typeof window !== 'undefined' ? window.innerWidth : 1200
-  );
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrollY(window.scrollY);
-    };
-
-    const handleResize = () => {
-      const width = window.innerWidth;
-      setViewportWidth(width);
-      setIsMobile(width < 768);
-    };
-
-    handleResize();
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', handleResize);
-
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
-
-  // Compute dynamic positions for the swarm across scroll progress
-  const cursorStates = useMemo(() => {
-    const states: Record<string, CursorState> = {};
-    const centerX = viewportWidth / 2;
-
-    // Zone 1: Hero Section Assembly (Scroll 0 - 380px)
-    if (scrollY < 380) {
-      // 1. Dev [Kishal]: Pulling Top-Left corner anchor handle
-      states['dev-kishal'] = {
-        x: Math.max(20, centerX - 480),
-        y: 110 + scrollY * 0.35,
-        actionText: '980 × 520',
-        isDrawing: true,
-      };
-
-      // 2. UI_Design: Pulling Bottom-Right corner anchor handle
-      states['ui-ux'] = {
-        x: Math.min(viewportWidth - 140, centerX + 440),
-        y: 530 + scrollY * 0.25,
-        actionText: 'auto-layout: 32px',
-        isDrawing: true,
-      };
-
-      // 3. SecOps: Inspecting ThreatLens chip
-      states['secops'] = {
-        x: Math.max(60, centerX - 140),
-        y: 180 + scrollY * 0.28,
-        actionText: '✓ P-256 ECDSA',
-      };
-
-      // 4. AI_Agent [RAG]: Inspecting FAISS RAG badge
-      states['ai-rag'] = {
-        x: Math.min(viewportWidth - 170, centerX + 180),
-        y: 185 + scrollY * 0.26,
-        actionText: 'FAISS Vector RAG',
-      };
-
-      // 5. Kernel [Linux]: Hovering near Primary CTA
-      states['kernel'] = {
-        x: Math.max(40, centerX - 360),
-        y: 420 + scrollY * 0.38,
-        actionText: 'Click: #projects',
-      };
-
-      // 6. QA_Audit: Stamping bottom spec check
-      states['qa-audit'] = {
-        x: Math.min(viewportWidth - 160, centerX + 260),
-        y: 480 + scrollY * 0.3,
-        actionText: 'PASS: 100%',
-      };
-
-      // 7. Reviewer: Inspecting top tag
-      states['reviewer'] = {
-        x: Math.max(40, centerX - 380),
-        y: 95 + scrollY * 0.15,
-        actionText: 'HeroSection.instance',
-      };
-    } else {
-      // Zone 2: Swarm glides down into Design System & Foundation Cards
-      const offset = scrollY - 380;
-
-      states['dev-kishal'] = {
-        x: Math.max(40, centerX - 360 + Math.sin(offset * 0.01) * 15),
-        y: 640 + offset * 0.75,
-        actionText: '#CCFF00 Kiwi',
-        isDrawing: false,
-      };
-
-      states['secops'] = {
-        x: Math.max(60, centerX - 120),
-        y: 660 + offset * 0.78,
-        actionText: '#FFFF00 SecOps',
-      };
-
-      states['ai-rag'] = {
-        x: Math.min(viewportWidth - 160, centerX + 120),
-        y: 655 + offset * 0.74,
-        actionText: '#DFFF00 RAG',
-      };
-
-      states['ui-ux'] = {
-        x: Math.min(viewportWidth - 140, centerX + 360),
-        y: 670 + offset * 0.72,
-        actionText: 'snap: 24px',
-      };
-
-      states['kernel'] = {
-        x: Math.max(30, centerX - 380),
-        y: 860 + offset * 0.86,
-        actionText: 'Linux Architecture',
-      };
-
-      states['qa-audit'] = {
-        x: centerX - 20,
-        y: 870 + offset * 0.88,
-        actionText: 'Security Verified',
-      };
-
-      states['reviewer'] = {
-        x: Math.min(viewportWidth - 140, centerX + 340),
-        y: 855 + offset * 0.84,
-        actionText: 'Spec Approved',
-      };
-    }
-
-    return states;
-  }, [scrollY, viewportWidth]);
-
-  // On mobile screens, limit active cursors to 2 so reading is comfortable
-  const activePersonas = isMobile 
-    ? SWARM_PERSONAS.slice(0, 2) 
-    : SWARM_PERSONAS;
+export const CursorSwarmEngine: React.FC<CursorSwarmEngineProps> = ({ 
+  followingIds = ['dev-kishal', 'secops', 'ai-rag', 'kernel', 'ui-ux', 'qa-audit', 'reviewer']
+}) => {
+  const mouse = useMousePosition();
 
   return (
     <div 
-      className="absolute inset-0 pointer-events-none overflow-hidden z-30" 
+      className="fixed inset-0 pointer-events-none overflow-hidden z-50 select-none" 
       aria-hidden="true"
     >
-      {activePersonas.map((persona) => {
-        const state = cursorStates[persona.id];
-        if (!state) return null;
+      <AnimatePresence>
+        {SWARM_PERSONAS.map((persona) => {
+          const isFollowing = followingIds.includes(persona.id);
+          if (!isFollowing) return null;
 
-        return (
-          <CollaborativeCursor
-            key={persona.id}
-            persona={persona}
-            x={state.x}
-            y={state.y}
-            actionText={state.actionText}
-            isDrawing={state.isDrawing}
-          />
-        );
-      })}
+          const targetX = mouse.clientX + persona.offsetX;
+          const targetY = mouse.clientY + persona.offsetY;
+
+          return (
+            <motion.div
+              key={persona.id}
+              className="fixed top-0 left-0 pointer-events-none flex flex-col items-start z-50"
+              initial={{
+                x: mouse.clientX + persona.offsetX * 2.5,
+                y: mouse.clientY + persona.offsetY * 2.5,
+                opacity: 0,
+                scale: 0.8,
+              }}
+              animate={{
+                x: targetX,
+                y: targetY,
+                opacity: 1,
+                scale: 1,
+              }}
+              exit={{
+                opacity: 0,
+                scale: 0.8,
+                transition: { duration: 0.2 },
+              }}
+              transition={{
+                type: 'spring',
+                stiffness: persona.stiffness,
+                damping: persona.damping,
+                mass: 0.45,
+              }}
+              style={{
+                willChange: 'transform',
+              }}
+            >
+              {/* SVG Pointer Arrow */}
+              <svg
+                className="w-4 h-4 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)]"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M3 1L21 13.5L13.5 15L9.5 23L6.5 21.5L10.5 14L3 1Z"
+                  fill={persona.color}
+                  stroke="#000000"
+                  strokeWidth="1.5"
+                  strokeLinejoin="round"
+                />
+              </svg>
+
+              {/* Persona Badge Pill */}
+              <div className="flex items-center gap-1 ml-2 mt-0.5">
+                <span
+                  className="px-1.5 py-0.5 text-[9px] font-mono font-bold rounded shadow-xl whitespace-nowrap border"
+                  style={{
+                    backgroundColor: '#0A0B08',
+                    color: persona.color,
+                    borderColor: `${persona.color}50`,
+                  }}
+                >
+                  {persona.name}
+                </span>
+              </div>
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
     </div>
   );
 };

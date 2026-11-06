@@ -4,24 +4,16 @@ import { motion, useSpring } from 'framer-motion';
 export const VisitorCursor = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-  const [isTouchDevice, setIsTouchDevice] = useState(false);
 
-  const mouseX = useSpring(0, { damping: 28, stiffness: 350 });
-  const mouseY = useSpring(0, { damping: 28, stiffness: 350 });
+  const mouseX = useSpring(0, { damping: 30, stiffness: 400 });
+  const mouseY = useSpring(0, { damping: 30, stiffness: 400 });
 
   useEffect(() => {
-    // Check if touch device
-    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
-      setIsTouchDevice(true);
-      return;
-    }
-
     const handleMouseMove = (e: MouseEvent) => {
       mouseX.set(e.clientX);
       mouseY.set(e.clientY);
       if (!isVisible) setIsVisible(true);
 
-      // Check if hovering over clickable element
       const target = e.target as HTMLElement | null;
       if (target) {
         const isClickable = 
@@ -48,7 +40,7 @@ export const VisitorCursor = () => {
     };
   }, [mouseX, mouseY, isVisible]);
 
-  if (isTouchDevice || !isVisible) return null;
+  if (!isVisible) return null;
 
   return (
     <motion.div
@@ -62,7 +54,7 @@ export const VisitorCursor = () => {
     >
       {/* Precision Arrow Pointer */}
       <svg
-        className={`w-4 h-4 transition-transform duration-150 drop-shadow-[0_2px_10px_rgba(204,255,0,0.4)] ${
+        className={`w-4 h-4 transition-transform duration-150 drop-shadow-[0_2px_10px_rgba(204,255,0,0.6)] ${
           isHovered ? 'scale-125' : 'scale-100'
         }`}
         viewBox="0 0 24 24"
@@ -80,16 +72,10 @@ export const VisitorCursor = () => {
 
       {/* Collaborator Badge Pill */}
       <div className="flex items-center gap-1.5 ml-2 mt-0.5">
-        <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded shadow-lg bg-black/95 text-kiwi border border-kiwi/40">
+        <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded shadow-xl bg-black/95 text-kiwi border border-kiwi/40">
           You [Collaborator]
         </span>
-        {isHovered && (
-          <span className="px-1.5 py-0.5 text-[9px] font-mono font-medium rounded shadow bg-kiwi text-black font-semibold">
-            Select
-          </span>
-        )}
       </div>
     </motion.div>
   );
 };
-
