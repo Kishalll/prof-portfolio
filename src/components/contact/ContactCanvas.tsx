@@ -10,7 +10,7 @@ import {
   ArrowUpRight,
   MessageSquareCode
 } from 'lucide-react';
-import { gsap, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition } from '../../animation/motionUtils';
+import { gsap, ScrollTrigger, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition } from '../../animation/motionUtils';
 import { useChoreographer } from '../../animation/ChoreographerContext';
 import { SelectionBox, GuideLines, CursorAgent } from '../canvas/overlays';
 
@@ -131,13 +131,14 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
         });
 
         // Master ScrollTrigger Timeline
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: container,
-            start: 'top 75%',
-            once: !rebuildOnReentry,
-          },
-        });
+        ctx.add(() => {
+          const tl = gsap.timeline({
+            scrollTrigger: {
+              trigger: container,
+              start: 'top 80%',
+              once: !rebuildOnReentry,
+            },
+          });
 
         // Red ruler line
         if (rulerRef.current && !isMobile) {
@@ -261,9 +262,13 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
             );
           }
         });
-      };
+      });
 
-      initScrollBuild();
+      // Ensure ScrollTrigger updates trigger metrics after DOM calculations
+      ScrollTrigger.refresh();
+    };
+
+    initScrollBuild();
     }, container);
 
     return () => {

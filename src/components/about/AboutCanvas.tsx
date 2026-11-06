@@ -6,7 +6,7 @@ import {
   BookOpen, 
   MessageSquare 
 } from 'lucide-react';
-import { gsap, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition } from '../../animation/motionUtils';
+import { gsap, ScrollTrigger, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition } from '../../animation/motionUtils';
 import { useChoreographer } from '../../animation/ChoreographerContext';
 import { SelectionBox, GuideLines, CursorAgent } from '../canvas/overlays';
 
@@ -158,14 +158,15 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
           }
         });
 
-        // Build Master ScrollTrigger Timeline
-        const tl = gsap.timeline({
-          scrollTrigger: {
-            trigger: container,
-            start: 'top 75%',
-            once: !rebuildOnReentry,
-          },
-        });
+        // Build Master ScrollTrigger Timeline inside ctx.add so GSAP tracks it properly
+        ctx.add(() => {
+          const tl = gsap.timeline({
+            scrollTrigger: {
+              trigger: container,
+              start: 'top 80%',
+              once: !rebuildOnReentry,
+            },
+          });
 
         // Animate Red Vertical Ruler Line
         if (rulerRef.current && !isMobile) {
@@ -308,9 +309,13 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
             );
           }
         });
-      };
+      });
 
-      initScrollBuild();
+      // Ensure ScrollTrigger updates trigger metrics after DOM calculations
+      ScrollTrigger.refresh();
+    };
+
+    initScrollBuild();
     }, container);
 
     return () => {

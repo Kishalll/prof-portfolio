@@ -7,7 +7,7 @@ import {
   Lock, 
   CheckCircle2 
 } from 'lucide-react';
-import { gsap, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition } from '../../animation/motionUtils';
+import { gsap, ScrollTrigger, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition } from '../../animation/motionUtils';
 import { useChoreographer } from '../../animation/ChoreographerContext';
 import { SelectionBox, GuideLines, CursorAgent } from '../canvas/overlays';
 
@@ -346,6 +346,9 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
             );
           }
         });
+
+        // Ensure ScrollTrigger recalculates all down-page section triggers accurately
+        ScrollTrigger.refresh();
       };
 
       runBuild();
