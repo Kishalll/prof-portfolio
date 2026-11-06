@@ -15,6 +15,8 @@ export const CursorAgent = forwardRef<HTMLDivElement, CursorAgentProps>(
         ref={ref}
         className={`absolute top-0 left-0 pointer-events-none select-none z-30 flex flex-col items-start will-change-transform ${className}`}
         style={{
+          opacity: 0,
+          visibility: 'hidden',
           transform: 'translate3d(-100px, -100px, 0)', // initial off-screen placement
           ...style,
         }}

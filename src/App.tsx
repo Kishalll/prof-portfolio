@@ -35,6 +35,7 @@ function PortfolioAppContent() {
 
       {/* TOP NAVIGATION */}
       <CanvasHeader 
+        buildKey={replayKey}
         isGridVisible={isGridVisible}
         onToggleGrid={() => setIsGridVisible(prev => !prev)}
         onReplayBuild={triggerReplay}

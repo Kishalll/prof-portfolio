@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { 
   ArrowUpRight, 
   Github, 
@@ -7,9 +7,10 @@ import {
   Lock, 
   CheckCircle2 
 } from 'lucide-react';
-import { gsap, ScrollTrigger, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition } from '../../animation/motionUtils';
+import { gsap, ScrollTrigger, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition, addCurvedCursorTravel, addSelectionBoxBuild, createFixedGuideLinesOverlay, addCursorIdleDrift, headingReveal } from '../../animation/motionUtils';
 import { useChoreographer } from '../../animation/ChoreographerContext';
-import { SelectionBox, GuideLines, CursorAgent } from '../canvas/overlays';
+import { useSectionChoreographer, ChoreographerLayer } from '../../animation/CursorChoreographer';
+import { GuideLines } from '../canvas/overlays';
 
 interface HeroBuilderCanvasProps {
   buildKey?: number;
@@ -19,7 +20,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
   buildKey = 0,
 }) => {
   const containerRef = useRef<HTMLElement>(null);
-  const { personaPool, isMobile, prefersReducedMotion } = useChoreographer();
+  const { isMobile, prefersReducedMotion } = useChoreographer();
 
   // Content Element Refs
   const badge1Ref = useRef<HTMLDivElement>(null);
@@ -44,30 +45,35 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
   const vLineRef = useRef<HTMLDivElement>(null);
   const rulerRef = useRef<HTMLDivElement>(null);
 
-  // Selection Box Refs (1 per target element)
-  const boxBadge1Ref = useRef<HTMLDivElement>(null);
-  const boxBadge2Ref = useRef<HTMLDivElement>(null);
-  const boxBadge3Ref = useRef<HTMLDivElement>(null);
-  const boxHeadlineRef = useRef<HTMLDivElement>(null);
-  const boxBioRef = useRef<HTMLDivElement>(null);
-  const boxCta1Ref = useRef<HTMLDivElement>(null);
-  const boxCta2Ref = useRef<HTMLDivElement>(null);
-  const boxLockRef = useRef<HTMLDivElement>(null);
-  const boxSpecRef = useRef<HTMLDivElement>(null);
+  // Pool-managed autonomous cursor choreographer
+  const { agents, assign, releaseAll } = useSectionChoreographer(isMobile);
 
-  // Cursor Agent Refs (1 per target element)
-  const cursorBadge1Ref = useRef<HTMLDivElement>(null);
-  const cursorBadge2Ref = useRef<HTMLDivElement>(null);
-  const cursorBadge3Ref = useRef<HTMLDivElement>(null);
-  const cursorHeadlineRef = useRef<HTMLDivElement>(null);
-  const cursorBioRef = useRef<HTMLDivElement>(null);
-  const cursorCta1Ref = useRef<HTMLDivElement>(null);
-  const cursorCta2Ref = useRef<HTMLDivElement>(null);
-  const cursorLockRef = useRef<HTMLDivElement>(null);
-  const cursorSpecRef = useRef<HTMLDivElement>(null);
+  // Synchronous hide before paint (stops the flash completely)
+  useLayoutEffect(() => {
+    if (prefersReducedMotion) return;
+    const container = containerRef.current;
+    if (!container) return;
 
-  // Dimensions state for labels
-  const [boxDims, setBoxDims] = useState<Record<string, { width: number; height: number }>>({});
+    const ctx = gsap.context(() => {
+      gsap.set(
+        [
+          badge1Ref.current,
+          badge2Ref.current,
+          badge3Ref.current,
+          headlineRef.current,
+          bioRef.current,
+          cta1Ref.current,
+          cta2Ref.current,
+          lockRef.current,
+          specDividerRef.current,
+          specGridRef.current,
+        ].filter(Boolean),
+        { autoAlpha: 0 }
+      );
+    }, container);
+
+    return () => ctx.revert();
+  }, [buildKey, prefersReducedMotion]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -99,35 +105,14 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           specGridRef.current,
         ].filter(Boolean) as HTMLElement[];
 
-        const selectionBoxes = [
-          boxBadge1Ref.current,
-          boxBadge2Ref.current,
-          boxBadge3Ref.current,
-          boxHeadlineRef.current,
-          boxBioRef.current,
-          boxCta1Ref.current,
-          boxCta2Ref.current,
-          boxLockRef.current,
-          boxSpecRef.current,
-        ].filter(Boolean) as HTMLElement[];
-
-        const cursors = [
-          cursorBadge1Ref.current,
-          cursorBadge2Ref.current,
-          cursorBadge3Ref.current,
-          cursorHeadlineRef.current,
-          cursorBioRef.current,
-          cursorCta1Ref.current,
-          cursorCta2Ref.current,
-          cursorLockRef.current,
-          cursorSpecRef.current,
-        ].filter(Boolean) as HTMLElement[];
+        const selectionBoxes = agents.map((a) => a.boxRef.current).filter(Boolean) as HTMLElement[];
+        const cursorEls = agents.map((a) => a.cursorRef.current).filter(Boolean) as HTMLElement[];
 
         // Handle prefers-reduced-motion: reveal all content immediately with zero overlays
         if (prefersReducedMotion) {
           gsap.set(contentElements, { autoAlpha: 1, y: 0, filter: 'none', clipPath: 'none' });
           gsap.set(selectionBoxes, { autoAlpha: 0 });
-          gsap.set(cursors, { autoAlpha: 0 });
+          gsap.set(cursorEls, { autoAlpha: 0 });
           return;
         }
 
@@ -138,27 +123,36 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
 
         // Measure true relative bounds for each target
         const targets = [
-          { key: 'badge1', el: badge1Ref.current, box: boxBadge1Ref.current, cursor: cursorBadge1Ref.current, delay: 0.0, isHeadline: false },
-          { key: 'badge2', el: badge2Ref.current, box: boxBadge2Ref.current, cursor: cursorBadge2Ref.current, delay: 0.06, isHeadline: false },
-          { key: 'badge3', el: badge3Ref.current, box: boxBadge3Ref.current, cursor: cursorBadge3Ref.current, delay: 0.12, isHeadline: false },
-          { key: 'headline', el: headlineRef.current, box: boxHeadlineRef.current, cursor: cursorHeadlineRef.current, delay: 0.20, isHeadline: true },
-          { key: 'bio', el: bioRef.current, box: boxBioRef.current, cursor: cursorBioRef.current, delay: 0.30, isHeadline: false },
-          { key: 'cta1', el: cta1Ref.current, box: boxCta1Ref.current, cursor: cursorCta1Ref.current, delay: 0.40, isHeadline: false },
-          { key: 'cta2', el: cta2Ref.current, box: boxCta2Ref.current, cursor: cursorCta2Ref.current, delay: 0.46, isHeadline: false },
-          { key: 'lock', el: lockRef.current, box: boxLockRef.current, cursor: cursorLockRef.current, delay: 0.52, isHeadline: false },
-          { key: 'spec', el: specGridRef.current, box: boxSpecRef.current, cursor: cursorSpecRef.current, delay: 0.60, isHeadline: false },
+          { key: 'badge1', el: badge1Ref.current, label: 'Select', delay: 0.0, isHeadline: false },
+          { key: 'badge2', el: badge2Ref.current, label: 'Audit', delay: 0.06, isHeadline: false },
+          { key: 'badge3', el: badge3Ref.current, label: 'Mount', delay: 0.12, isHeadline: false },
+          { key: 'headline', el: headlineRef.current, label: 'Type Headline', delay: 0.20, isHeadline: true },
+          { key: 'bio', el: bioRef.current, label: 'Format Bio', delay: 0.30, isHeadline: false },
+          { key: 'cta1', el: cta1Ref.current, label: 'Resize CTA', delay: 0.40, isHeadline: false },
+          { key: 'cta2', el: cta2Ref.current, label: 'Link Repo', delay: 0.46, isHeadline: false },
+          { key: 'lock', el: lockRef.current, label: 'P-256 Assert', delay: 0.52, isHeadline: false },
+          { key: 'spec', el: specGridRef.current, label: 'Scramble Stats', delay: 0.60, isHeadline: false },
         ];
 
-        const calculatedDims: Record<string, { width: number; height: number }> = {};
         const measuredTargets = targets.map((t) => {
           if (!t.el) return null;
           const bounds = getRelativeBounds(t.el, container);
-          calculatedDims[t.key] = { width: bounds.width, height: bounds.height };
           const start = getRandomEdgePosition(containerW, containerH);
-          return { ...t, bounds, start };
-        }).filter(Boolean) as (typeof targets[0] & { bounds: { x: number; y: number; width: number; height: number }; start: { x: number; y: number } })[];
-
-        setBoxDims(calculatedDims);
+          const agent = assign({ target: t.el, label: t.label, isHeadline: t.isHeadline });
+          return {
+            ...t,
+            bounds,
+            start,
+            agent,
+            box: agent.boxRef.current,
+            cursor: agent.cursorRef.current,
+          };
+        }).filter(Boolean) as (typeof targets[0] & {
+          bounds: { x: number; y: number; width: number; height: number };
+          start: { x: number; y: number };
+          box: HTMLDivElement | null;
+          cursor: HTMLDivElement | null;
+        })[];
 
         // Position cursors at initial off-screen edge origins
         measuredTargets.forEach((t) => {
@@ -171,180 +165,127 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           }
         });
 
-        // 2. Master Intro Construction Timeline
-        const masterTl = gsap.timeline();
+        // 2. Master Intro Construction Timeline wrapped in ctx.add for context safety
+        ctx.add(() => {
+          const masterTl = gsap.timeline();
 
-        // Animate Red Vertical Ruler Line (Reference alignment near left edge)
-        if (rulerRef.current && !isMobile) {
-          masterTl.fromTo(
-            rulerRef.current,
-            { scaleY: 0, transformOrigin: 'top center', autoAlpha: 0 },
-            { scaleY: 1, autoAlpha: 0.8, duration: 0.8, ease: 'power2.out' },
-            0.0
-          );
-        }
-
-        // Animate Each Target Element Concurrently with 40-80ms Stagger
-        measuredTargets.forEach((t) => {
-          const { el, box, cursor, bounds, delay, isHeadline } = t;
-
-          // A. Cursor travels along curved path to target bounds with slight overshoot
-          if (cursor) {
-            masterTl.to(
-              cursor,
-              {
-                x: bounds.x + Math.min(16, bounds.width * 0.1),
-                y: bounds.y + Math.min(16, bounds.height * 0.2),
-                duration: 0.7,
-                ease: 'back.out(1.4)',
-              },
-              delay
-            );
-          }
-
-          // B. Selection Box starts small near cursor and resizes to bounds
-          if (box) {
-            masterTl.fromTo(
-              box,
-              {
-                x: bounds.x,
-                y: bounds.y,
-                width: 28,
-                height: 18,
-                autoAlpha: 1,
-              },
-              {
-                x: bounds.x,
-                y: bounds.y,
-                width: bounds.width,
-                height: bounds.height,
-                duration: 0.55,
-                ease: 'expo.out',
-              },
-              delay + 0.22
-            );
-
-            // Alignment Snap Guide Lines flash at bounds edges
-            if (hLineRef.current && vLineRef.current && !isMobile) {
-              masterTl.set(hLineRef.current, { top: bounds.y, autoAlpha: 0.7 }, delay + 0.22);
-              masterTl.set(vLineRef.current, { left: bounds.x, autoAlpha: 0.7 }, delay + 0.22);
-              masterTl.to([hLineRef.current, vLineRef.current], { autoAlpha: 0, duration: 0.25 }, delay + 0.5);
+          // Fixed viewport guide lines overlay (2-4 H & V lines spanning viewport + red ruler)
+          const cleanupGuideLines = createFixedGuideLinesOverlay(
+            masterTl,
+            [headlineRef.current, bioRef.current, cta1Ref.current, specGridRef.current].filter(Boolean) as HTMLElement[],
+            {
+              showRuler: !isMobile,
+              rulerOffset: isMobile ? 12 : 28,
+              delay: 0.05,
             }
-
-            // Selection Box fades out once content reveals
-            masterTl.to(
-              box,
-              {
-                autoAlpha: 0,
-                duration: 0.35,
-                ease: 'power2.inOut',
-              },
-              delay + 0.85
-            );
-          }
-
-          // C. Content Reveals inside the box
-          if (el) {
-            if (isHeadline) {
-              // Heading masked blur-to-sharp effect
-              masterTl.fromTo(
-                el,
-                {
-                  autoAlpha: 0,
-                  filter: 'blur(8px)',
-                  y: 14,
-                  clipPath: 'inset(0 0 100% 0)',
-                },
-                {
-                  autoAlpha: 1,
-                  filter: 'blur(0px)',
-                  y: 0,
-                  clipPath: 'inset(0 0 0% 0)',
-                  duration: 0.75,
-                  ease: 'power3.out',
-                },
-                delay + 0.45
-              );
-            } else {
-              // Clean alpha & y reveal for badges, bio, CTAs
-              masterTl.fromTo(
-                el,
-                {
-                  autoAlpha: 0,
-                  y: 10,
-                },
-                {
-                  autoAlpha: 1,
-                  y: 0,
-                  duration: 0.5,
-                  ease: 'power2.out',
-                },
-                delay + 0.45
-              );
-            }
-          }
-
-          // D. Cursor idles & drifts gracefully toward edge (does NOT follow visitor mouse)
-          if (cursor) {
-            const idleOffset = getRandomEdgePosition(containerW, containerH);
-            masterTl.to(
-              cursor,
-              {
-                x: bounds.x + (Math.random() - 0.5) * 40,
-                y: bounds.y + (Math.random() - 0.5) * 40,
-                duration: 0.5,
-                ease: 'power1.out',
-              },
-              delay + 0.85
-            );
-            masterTl.to(
-              cursor,
-              {
-                x: idleOffset.x * 0.85,
-                y: idleOffset.y * 0.85,
-                opacity: 0.3,
-                duration: 1.6,
-                ease: 'power2.out',
-              },
-              delay + 1.35
-            );
-          }
-        });
-
-        // Spec Divider Line Reveal
-        if (specDividerRef.current) {
-          masterTl.fromTo(
-            specDividerRef.current,
-            { scaleX: 0, transformOrigin: 'left center', autoAlpha: 0 },
-            { scaleX: 1, autoAlpha: 1, duration: 0.6, ease: 'power2.out' },
-            0.55
           );
-        }
 
-        // E. Stat Numbers Scramble Animation (using ScrambleTextPlugin for 600-800ms)
-        const stats = [
-          { ref: statNum1Ref.current, finalVal: 'Full-Stack + SecOps' },
-          { ref: statNum2Ref.current, finalVal: 'Class of 2027' },
-          { ref: statNum3Ref.current, finalVal: '05 Flagship Pipelines' },
-          { ref: statNum4Ref.current, finalVal: 'Summer 2026' },
-        ];
+          // Animate Each Target Element Concurrently with 40-80ms Stagger
+          measuredTargets.forEach((t, i) => {
+            const { el, box, cursor, bounds, delay, isHeadline } = t;
+            const targetPos = {
+              x: bounds.x + Math.min(16, bounds.width * 0.1),
+              y: bounds.y + Math.min(16, bounds.height * 0.2),
+            };
 
-        stats.forEach((st) => {
-          if (st.ref) {
-            masterTl.to(
-              st.ref,
-              {
-                scrambleText: {
-                  text: st.finalVal,
-                  chars: '0123456789ABCDEF!<>-_/[]{}',
-                  speed: 0.5,
-                },
+            // A. Cursor travels along curved path to target bounds with slight overshoot and banking
+            if (cursor) {
+              addCurvedCursorTravel(masterTl, cursor, t.start, targetPos, {
                 duration: 0.75,
-                ease: 'none',
-              },
-              0.65
+                position: delay,
+                ease: 'back.out(1.2)',
+              });
+            }
+
+            // B. Selection Box starts small at cursor arrival point & resizes to bounds via transforms
+            if (box) {
+              addSelectionBoxBuild(masterTl, box, bounds, targetPos, {
+                delay: delay + 0.22,
+                duration: 0.52,
+                fadeDelay: delay + 0.85,
+                ease: 'expo.out',
+              });
+            }
+
+            // C. Content Reveals inside the box
+            if (el) {
+              if (isHeadline) {
+                headingReveal(masterTl, el, {
+                  duration: 0.75,
+                  position: delay + 0.45,
+                });
+              } else {
+                // Clean alpha & y reveal for badges, bio, CTAs
+                masterTl.fromTo(
+                  el,
+                  {
+                    autoAlpha: 0,
+                    y: 10,
+                  },
+                  {
+                    autoAlpha: 1,
+                    y: 0,
+                    duration: 0.5,
+                    ease: 'power2.out',
+                  },
+                  delay + 0.45
+                );
+              }
+            }
+
+            // D. Cursor idles & drifts gracefully along edges
+            if (cursor) {
+              addCursorIdleDrift(
+                masterTl,
+                cursor,
+                i,
+                measuredTargets.length,
+                containerW,
+                containerH,
+                delay + 1.1
+              );
+            }
+          });
+
+          // Spec Divider Line Reveal
+          if (specDividerRef.current) {
+            masterTl.fromTo(
+              specDividerRef.current,
+              { scaleX: 0, transformOrigin: 'left center', autoAlpha: 0 },
+              { scaleX: 1, autoAlpha: 1, duration: 0.6, ease: 'power2.out' },
+              0.55
             );
           }
+
+          // E. Stat Numbers Scramble Animation (using ScrambleTextPlugin for 600-800ms)
+          const stats = [
+            { ref: statNum1Ref.current, finalVal: 'Full-Stack + SecOps' },
+            { ref: statNum2Ref.current, finalVal: 'Class of 2027' },
+            { ref: statNum3Ref.current, finalVal: '05 Flagship Pipelines' },
+            { ref: statNum4Ref.current, finalVal: 'Summer 2026' },
+          ];
+
+          stats.forEach((st) => {
+            if (st.ref) {
+              masterTl.to(
+                st.ref,
+                {
+                  scrambleText: {
+                    text: st.finalVal,
+                    chars: '0123456789ABCDEF!<>-_/[]{}',
+                    speed: 0.5,
+                  },
+                  duration: 0.75,
+                  ease: 'none',
+                },
+                0.65
+              );
+            }
+          });
+
+          return () => {
+            cleanupGuideLines?.();
+          };
         });
 
         // Ensure ScrollTrigger recalculates all down-page section triggers accurately
@@ -356,9 +297,12 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
 
     return () => {
       isCancelled = true;
+      releaseAll();
       ctx.revert();
     };
   }, [buildKey, prefersReducedMotion, isMobile]);
+
+  const initialStyle = prefersReducedMotion ? undefined : { opacity: 0, visibility: 'hidden' as const };
 
   return (
     <section 
@@ -375,27 +319,8 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
         rulerRef={rulerRef}
       />
 
-      {/* 2. SELECTION BOXES LAYER (1 per target element, sized and positioned by GSAP) */}
-      <SelectionBox ref={boxBadge1Ref} dimensions={boxDims['badge1']} />
-      <SelectionBox ref={boxBadge2Ref} dimensions={boxDims['badge2']} />
-      <SelectionBox ref={boxBadge3Ref} dimensions={boxDims['badge3']} />
-      <SelectionBox ref={boxHeadlineRef} dimensions={boxDims['headline']} />
-      <SelectionBox ref={boxBioRef} dimensions={boxDims['bio']} />
-      <SelectionBox ref={boxCta1Ref} dimensions={boxDims['cta1']} />
-      <SelectionBox ref={boxCta2Ref} dimensions={boxDims['cta2']} />
-      <SelectionBox ref={boxLockRef} dimensions={boxDims['lock']} />
-      <SelectionBox ref={boxSpecRef} dimensions={boxDims['spec']} />
-
-      {/* 3. AUTONOMOUS CURSOR AGENTS LAYER (Each owns one element) */}
-      <CursorAgent ref={cursorBadge1Ref} persona={personaPool[0] || { id: 'dev', name: 'Dev [Kishal]', role: 'Lead', color: '#CCFF00' }} actionLabel="Select" />
-      <CursorAgent ref={cursorBadge2Ref} persona={personaPool[1] || { id: 'secops', name: 'SecOps', role: 'Security', color: '#FFFF00' }} actionLabel="Audit" />
-      <CursorAgent ref={cursorBadge3Ref} persona={personaPool[2] || { id: 'ai', name: 'AI_Agent', role: 'RAG', color: '#DFFF00' }} actionLabel="Mount" />
-      <CursorAgent ref={cursorHeadlineRef} persona={personaPool[3] || { id: 'ui', name: 'UI_Design', role: 'Type', color: '#CCFF00' }} actionLabel="Type Headline" />
-      <CursorAgent ref={cursorBioRef} persona={personaPool[4] || { id: 'reviewer', name: 'Reviewer', role: 'Spec', color: '#FFFFFF' }} actionLabel="Format Bio" />
-      <CursorAgent ref={cursorCta1Ref} persona={personaPool[5] || { id: 'kernel', name: 'Kernel', role: 'Actions', color: '#DFFF00' }} actionLabel="Resize CTA" />
-      <CursorAgent ref={cursorCta2Ref} persona={personaPool[6] || { id: 'syntax', name: 'Syntax_Worker', role: 'Git', color: '#CCFF00' }} actionLabel="Link Repo" />
-      <CursorAgent ref={cursorLockRef} persona={personaPool[7] || { id: 'crypto', name: 'Crypto_Worker', role: 'ECDSA', color: '#FFFF00' }} actionLabel="P-256 Assert" />
-      <CursorAgent ref={cursorSpecRef} persona={personaPool[8] || { id: 'qa', name: 'QA_Audit', role: 'Metrics', color: '#FFFF00' }} actionLabel="Scramble Stats" />
+      {/* 2. POOL-MANAGED AUTONOMOUS CURSOR & SELECTION BOX OVERLAYS */}
+      <ChoreographerLayer agents={agents} />
 
       {/* 4. MAIN CONTENT DOM (Kept in layout; measured then revealed) */}
       <div className="flex flex-col gap-8 relative z-10">
@@ -403,7 +328,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
         {/* ROW 1: BADGES */}
         <div className="flex flex-wrap items-center gap-3 text-xs font-mono min-h-[36px]">
           {/* Badge 1: VIT Chennai */}
-          <div ref={badge1Ref} className="relative inline-flex">
+          <div ref={badge1Ref} style={initialStyle} className="relative inline-flex">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-black border border-kiwi/50 text-kiwi font-medium shadow-sm">
               <span className="w-1.5 h-1.5 rounded-full bg-kiwi animate-pulse" />
               VIT Chennai &bull; Computer Science
@@ -411,7 +336,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           </div>
 
           {/* Badge 2: Cybersecurity */}
-          <div ref={badge2Ref} className="relative inline-flex">
+          <div ref={badge2Ref} style={initialStyle} className="relative inline-flex">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-black border border-kiwi-yellow/50 text-kiwi-yellow font-medium shadow-sm">
               <ShieldCheck size={13} />
               Cybersecurity &bull; ThreatLens
@@ -419,7 +344,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           </div>
 
           {/* Badge 3: Applied AI */}
-          <div ref={badge3Ref} className="relative inline-flex">
+          <div ref={badge3Ref} style={initialStyle} className="relative inline-flex">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-black border border-kiwi-chartreuse/50 text-kiwi-chartreuse font-medium shadow-sm">
               <Cpu size={13} />
               Applied AI &bull; FAISS RAG
@@ -432,6 +357,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           <div>
             <h1 
               ref={headlineRef}
+              style={initialStyle}
               className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white leading-[1.08] font-sans inline-block"
             >
               Full-Stack Developer &amp; Systems Engineer
@@ -440,6 +366,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
             <div className="mt-4 min-h-[60px]">
               <p 
                 ref={bioRef}
+                style={initialStyle}
                 className="text-zinc-300 text-base sm:text-lg md:text-xl leading-relaxed max-w-2xl font-normal inline-block"
               >
                 Hey, I'm Kishal P. I build full-stack systems, threat detection architectures, and applied AI/RAG pipelines with rigorous precision and intuitive user experience.
@@ -451,7 +378,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
         {/* ROW 3: CTAS */}
         <div className="flex flex-wrap items-center gap-3 min-h-[44px]">
           {/* Primary CTA */}
-          <div ref={cta1Ref} className="relative inline-flex">
+          <div ref={cta1Ref} style={initialStyle} className="relative inline-flex">
             <a
               href="#projects"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-kiwi text-black font-semibold text-xs transition-all hover:bg-kiwi/90 shadow-kiwi-glow hover:scale-[1.02]"
@@ -462,7 +389,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           </div>
 
           {/* Secondary CTA */}
-          <div ref={cta2Ref} className="relative inline-flex">
+          <div ref={cta2Ref} style={initialStyle} className="relative inline-flex">
             <a
               href="https://github.com/Kishalll"
               target="_blank"
@@ -475,7 +402,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           </div>
 
           {/* Verified Badge */}
-          <div ref={lockRef} className="relative hidden sm:inline-flex">
+          <div ref={lockRef} style={initialStyle} className="relative hidden sm:inline-flex">
             <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-black/60 border border-zinc-800 text-zinc-400 font-mono text-[11px]">
               <Lock size={12} className="text-kiwi-yellow" />
               <span>P-256 ECDSA Verified</span>
@@ -486,10 +413,10 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
         {/* ROW 4: SPEC FOOTER & SCRAMBLE STATS */}
         <div className="relative pt-6">
           {/* Dividing Ruler Line */}
-          <div ref={specDividerRef} className="w-full h-[1px] bg-kiwi-border/80 origin-left" />
+          <div ref={specDividerRef} style={initialStyle} className="w-full h-[1px] bg-kiwi-border/80 origin-left" />
 
           {/* 4 Column Stat Blocks */}
-          <div ref={specGridRef} className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono text-zinc-400 mt-4">
+          <div ref={specGridRef} style={initialStyle} className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono text-zinc-400 mt-4">
             <div>
               <div className="text-[10px] uppercase tracking-wider text-zinc-500">Focus</div>
               <div className="text-white font-medium mt-0.5">

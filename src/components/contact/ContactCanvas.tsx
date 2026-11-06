@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { 
   Mail, 
   Github, 
@@ -10,9 +10,10 @@ import {
   ArrowUpRight,
   MessageSquareCode
 } from 'lucide-react';
-import { gsap, ScrollTrigger, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition } from '../../animation/motionUtils';
+import { gsap, ScrollTrigger, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition, addCurvedCursorTravel, addSelectionBoxBuild, createFixedGuideLinesOverlay, addCursorIdleDrift, headingReveal } from '../../animation/motionUtils';
 import { useChoreographer } from '../../animation/ChoreographerContext';
-import { SelectionBox, GuideLines, CursorAgent } from '../canvas/overlays';
+import { useSectionChoreographer, ChoreographerLayer } from '../../animation/CursorChoreographer';
+import { GuideLines } from '../canvas/overlays';
 
 interface ContactCanvasProps {
   buildKey?: number;
@@ -20,7 +21,7 @@ interface ContactCanvasProps {
 
 export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) => {
   const containerRef = useRef<HTMLElement>(null);
-  const { personaPool, isMobile, prefersReducedMotion, rebuildOnReentry } = useChoreographer();
+  const { isMobile, prefersReducedMotion, rebuildOnReentry } = useChoreographer();
 
   // Header Elements
   const headerBadgeRef = useRef<HTMLDivElement>(null);
@@ -31,23 +32,36 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
   const leftColRef = useRef<HTMLDivElement>(null);
   const composerCardRef = useRef<HTMLDivElement>(null);
 
-  // Selection Boxes (1 header + 1 left col + 1 composer)
-  const boxHeaderRef = useRef<HTMLDivElement>(null);
-  const boxLeftColRef = useRef<HTMLDivElement>(null);
-  const boxComposerRef = useRef<HTMLDivElement>(null);
+  // Stat / Label Scramble Target Refs
+  const academicYearRef = useRef<HTMLSpanElement>(null);
+  const statusPillRef = useRef<HTMLSpanElement>(null);
+  const verifiedBadgeRef = useRef<HTMLSpanElement>(null);
 
-  // Cursors
-  const cursorHeaderRef = useRef<HTMLDivElement>(null);
-  const cursorLeftColRef = useRef<HTMLDivElement>(null);
-  const cursorComposerRef = useRef<HTMLDivElement>(null);
+  // Pool-managed autonomous cursor choreographer
+  const { agents, assign, releaseAll } = useSectionChoreographer(isMobile);
 
-  // GuideLines Refs
-  const hLineRef = useRef<HTMLDivElement>(null);
-  const vLineRef = useRef<HTMLDivElement>(null);
-  const rulerRef = useRef<HTMLDivElement>(null);
+  const initialStyle = prefersReducedMotion ? undefined : { opacity: 0, visibility: 'hidden' as const };
 
-  // Dimensions state
-  const [boxDims, setBoxDims] = useState<Record<string, { width: number; height: number }>>({});
+  useLayoutEffect(() => {
+    if (prefersReducedMotion) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const ctx = gsap.context(() => {
+      gsap.set(
+        [
+          headerBadgeRef.current,
+          headerTitleRef.current,
+          headerDescRef.current,
+          leftColRef.current,
+          composerCardRef.current,
+        ].filter(Boolean),
+        { autoAlpha: 0 }
+      );
+    }, container);
+
+    return () => ctx.revert();
+  }, [buildKey, prefersReducedMotion]);
 
   // Interactive Form State
   const [copiedEmail, setCopiedEmail] = useState(false);
@@ -82,17 +96,8 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
           composerCardRef.current,
         ].filter(Boolean) as HTMLElement[];
 
-        const allBoxes = [
-          boxHeaderRef.current,
-          boxLeftColRef.current,
-          boxComposerRef.current,
-        ].filter(Boolean) as HTMLElement[];
-
-        const allCursors = [
-          cursorHeaderRef.current,
-          cursorLeftColRef.current,
-          cursorComposerRef.current,
-        ].filter(Boolean) as HTMLElement[];
+        const allBoxes = agents.map((a) => a.boxRef.current).filter(Boolean) as HTMLElement[];
+        const allCursors = agents.map((a) => a.cursorRef.current).filter(Boolean) as HTMLElement[];
 
         if (prefersReducedMotion) {
           gsap.set(allContentElements, { autoAlpha: 1, y: 0, filter: 'none', clipPath: 'none' });
@@ -104,24 +109,32 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
         // Hide content initially in layout
         gsap.set(allContentElements, { autoAlpha: 0 });
         gsap.set(allBoxes, { autoAlpha: 0 });
-        gsap.set([hLineRef.current, vLineRef.current], { autoAlpha: 0 });
 
         const targets = [
-          { key: 'header', el: headerTitleRef.current, box: boxHeaderRef.current, cursor: cursorHeaderRef.current, delay: 0.0, isHeadline: true },
-          { key: 'leftCol', el: leftColRef.current, box: boxLeftColRef.current, cursor: cursorLeftColRef.current, delay: 0.18, isHeadline: false },
-          { key: 'composer', el: composerCardRef.current, box: boxComposerRef.current, cursor: cursorComposerRef.current, delay: 0.32, isHeadline: false },
+          { key: 'header', el: headerTitleRef.current, label: 'Select Contact', delay: 0.0, isHeadline: true },
+          { key: 'leftCol', el: leftColRef.current, label: 'Direct Channels', delay: 0.18, isHeadline: false },
+          { key: 'composer', el: composerCardRef.current, label: 'Message Board', delay: 0.32, isHeadline: false },
         ];
 
-        const calculatedDims: Record<string, { width: number; height: number }> = {};
         const measured = targets.map((t) => {
           if (!t.el) return null;
           const bounds = getRelativeBounds(t.el, container);
-          calculatedDims[t.key] = { width: bounds.width, height: bounds.height };
           const start = getRandomEdgePosition(containerW, containerH);
-          return { ...t, bounds, start };
-        }).filter(Boolean) as (typeof targets[0] & { bounds: { x: number; y: number; width: number; height: number }; start: { x: number; y: number } })[];
-
-        setBoxDims(calculatedDims);
+          const agent = assign({ target: t.el, label: t.label, isHeadline: t.isHeadline });
+          return {
+            ...t,
+            bounds,
+            start,
+            agent,
+            box: agent.boxRef.current,
+            cursor: agent.cursorRef.current,
+          };
+        }).filter(Boolean) as (typeof targets[0] & {
+          bounds: { x: number; y: number; width: number; height: number };
+          start: { x: number; y: number };
+          box: HTMLDivElement | null;
+          cursor: HTMLDivElement | null;
+        })[];
 
         // Position cursors at initial off-screen edges
         measured.forEach((t) => {
@@ -140,15 +153,16 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
             },
           });
 
-        // Red ruler line
-        if (rulerRef.current && !isMobile) {
-          tl.fromTo(
-            rulerRef.current,
-            { scaleY: 0, transformOrigin: 'top center', autoAlpha: 0 },
-            { scaleY: 1, autoAlpha: 0.8, duration: 0.7, ease: 'power2.out' },
-            0.0
-          );
-        }
+        // Fixed viewport guide lines overlay (2-4 H & V lines spanning viewport + red ruler)
+        const cleanupGuideLines = createFixedGuideLinesOverlay(
+          tl,
+          [headerTitleRef.current, leftColRef.current, composerCardRef.current].filter(Boolean) as HTMLElement[],
+          {
+            showRuler: !isMobile,
+            rulerOffset: isMobile ? 12 : 28,
+            delay: 0.05,
+          }
+        );
 
         // Header badge & desc
         if (headerBadgeRef.current) {
@@ -158,74 +172,89 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
           tl.fromTo(headerDescRef.current, { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: 0.5 }, 0.2);
         }
 
-        // Concurrently build targets
-        measured.forEach((t) => {
-          const { el, box, cursor, bounds, delay, isHeadline } = t;
-
-          // 1. Cursor enters
-          if (cursor) {
-            tl.to(
-              cursor,
-              {
-                x: bounds.x + Math.min(16, bounds.width * 0.1),
-                y: bounds.y + Math.min(16, bounds.height * 0.2),
-                duration: 0.65,
-                ease: 'back.out(1.4)',
+        // Stat Scramble: Verified tag, status, academic year
+        if (verifiedBadgeRef.current) {
+          tl.to(
+            verifiedBadgeRef.current,
+            {
+              scrambleText: {
+                text: 'P-256 Verified',
+                chars: '0123456789ABCDEF!<>-_/[]{}',
+                speed: 0.5,
               },
-              delay
-            );
+              duration: 0.65,
+              ease: 'none',
+            },
+            0.3
+          );
+        }
+
+        if (statusPillRef.current) {
+          tl.to(
+            statusPillRef.current,
+            {
+              scrambleText: {
+                text: 'Status: Available for Q2/Q3 2026 Internships',
+                chars: '0123456789ABCDEF!<>-_/[]{}',
+                speed: 0.5,
+              },
+              duration: 0.75,
+              ease: 'none',
+            },
+            0.35
+          );
+        }
+
+        if (academicYearRef.current) {
+          tl.to(
+            academicYearRef.current,
+            {
+              scrambleText: {
+                text: '3rd Year (Class of 2027)',
+                chars: '0123456789ABCDEF!<>-_/[]{}',
+                speed: 0.5,
+              },
+              duration: 0.65,
+              ease: 'none',
+            },
+            0.4
+          );
+        }
+
+        // Concurrently build targets
+        measured.forEach((t, i) => {
+          const { el, box, cursor, bounds, delay, isHeadline } = t;
+          const targetPos = {
+            x: bounds.x + Math.min(16, bounds.width * 0.1),
+            y: bounds.y + Math.min(16, bounds.height * 0.2),
+          };
+
+          // 1. Cursor enters along curved path with overshoot and banking
+          if (cursor) {
+            addCurvedCursorTravel(tl, cursor, t.start, targetPos, {
+              duration: 0.75,
+              position: delay,
+              ease: 'back.out(1.2)',
+            });
           }
 
-          // 2. Selection Box expands with 8 handles
+          // 2. Selection Box expands with 8 handles via transforms
           if (box) {
-            tl.fromTo(
-              box,
-              {
-                x: bounds.x,
-                y: bounds.y,
-                width: 28,
-                height: 18,
-                autoAlpha: 1,
-              },
-              {
-                x: bounds.x,
-                y: bounds.y,
-                width: bounds.width,
-                height: bounds.height,
-                duration: 0.52,
-                ease: 'expo.out',
-              },
-              delay + 0.2
-            );
-
-            // Snap guide lines
-            if (hLineRef.current && vLineRef.current && !isMobile) {
-              tl.set(hLineRef.current, { top: bounds.y, autoAlpha: 0.7 }, delay + 0.2);
-              tl.set(vLineRef.current, { left: bounds.x, autoAlpha: 0.7 }, delay + 0.2);
-              tl.to([hLineRef.current, vLineRef.current], { autoAlpha: 0, duration: 0.25 }, delay + 0.45);
-            }
-
-            // Selection box fades out
-            tl.to(
-              box,
-              {
-                autoAlpha: 0,
-                duration: 0.35,
-                ease: 'power2.inOut',
-              },
-              delay + 0.8
-            );
+            addSelectionBoxBuild(tl, box, bounds, targetPos, {
+              delay: delay + 0.2,
+              duration: 0.52,
+              fadeDelay: delay + 0.8,
+              ease: 'expo.out',
+            });
           }
 
           // 3. Target reveals inside box
           if (el) {
             if (isHeadline) {
-              tl.fromTo(
-                el,
-                { autoAlpha: 0, filter: 'blur(8px)', y: 12, clipPath: 'inset(0 0 100% 0)' },
-                { autoAlpha: 1, filter: 'blur(0px)', y: 0, clipPath: 'inset(0 0 0% 0)', duration: 0.7, ease: 'power3.out' },
-                delay + 0.35
-              );
+              headingReveal(tl, el, {
+                duration: 0.7,
+                position: delay + 0.35,
+              });
             } else {
               tl.fromTo(
                 el,
@@ -238,30 +267,21 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
 
           // 4. Cursor idles & drifts to edge
           if (cursor) {
-            const idleOffset = getRandomEdgePosition(containerW, containerH);
-            tl.to(
+            addCursorIdleDrift(
+              tl,
               cursor,
-              {
-                x: bounds.x + (Math.random() - 0.5) * 40,
-                y: bounds.y + (Math.random() - 0.5) * 40,
-                duration: 0.45,
-                ease: 'power1.out',
-              },
-              delay + 0.75
-            );
-            tl.to(
-              cursor,
-              {
-                x: idleOffset.x * 0.85,
-                y: idleOffset.y * 0.85,
-                opacity: 0.3,
-                duration: 1.5,
-                ease: 'power2.out',
-              },
-              delay + 1.2
+              i,
+              measured.length,
+              containerW,
+              containerH,
+              delay + 1.0
             );
           }
         });
+
+        return () => {
+          cleanupGuideLines?.();
+        };
       });
 
       // Ensure ScrollTrigger updates trigger metrics after DOM calculations
@@ -273,6 +293,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
 
     return () => {
       isCancelled = true;
+      releaseAll();
       ctx.revert();
     };
   }, [buildKey, prefersReducedMotion, isMobile, rebuildOnReentry]);
@@ -308,33 +329,24 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
       <GuideLines
         showRuler={!isMobile}
         rulerOffset={isMobile ? 12 : 28}
-        hLineRef={hLineRef}
-        vLineRef={vLineRef}
-        rulerRef={rulerRef}
       />
 
-      {/* 2. SELECTION BOXES LAYER */}
-      <SelectionBox ref={boxHeaderRef} dimensions={boxDims['header']} />
-      <SelectionBox ref={boxLeftColRef} dimensions={boxDims['leftCol']} />
-      <SelectionBox ref={boxComposerRef} dimensions={boxDims['composer']} />
-
-      {/* 3. AUTONOMOUS CURSOR AGENTS LAYER */}
-      <CursorAgent ref={cursorHeaderRef} persona={personaPool[0] || { id: 'dev', name: 'Dev [Kishal]', role: 'Lead', color: '#CCFF00' }} actionLabel="Select Contact" />
-      <CursorAgent ref={cursorLeftColRef} persona={personaPool[2] || { id: 'secops', name: 'SecOps', role: 'Security', color: '#FFFF00' }} actionLabel="Direct Channels" />
-      <CursorAgent ref={cursorComposerRef} persona={personaPool[6] || { id: 'reviewer', name: 'Reviewer', role: 'Composer', color: '#FFFFFF' }} actionLabel="Message Board" />
+      {/* 2. POOL-MANAGED AUTONOMOUS CURSOR & SELECTION BOX OVERLAYS */}
+      <ChoreographerLayer agents={agents} />
 
       {/* 4. MAIN CONTENT DOM (Kept in layout; measured then revealed) */}
       <div className="flex flex-col gap-10 relative z-10">
         
         {/* SECTION HEADER */}
         <div className="space-y-3 max-w-3xl min-h-[100px]">
-          <div ref={headerBadgeRef} className="inline-flex items-center gap-2 text-xs font-mono text-kiwi">
+          <div ref={headerBadgeRef} style={initialStyle} className="inline-flex items-center gap-2 text-xs font-mono text-kiwi">
             <MessageSquareCode size={14} />
             <span>Direct Coordinates &bull; Collaborative Inquiries</span>
           </div>
 
           <h2 
             ref={headerTitleRef}
+            style={initialStyle}
             className="text-3xl sm:text-5xl font-bold tracking-tight text-white leading-tight font-sans inline-block"
           >
             Initiate Collaboration &amp; Direct Inquiries
@@ -342,6 +354,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
 
           <p 
             ref={headerDescRef}
+            style={initialStyle}
             className="text-zinc-300 text-sm sm:text-base leading-relaxed"
           >
             Available for full-stack engineering roles, applied AI/RAG system architecture, security research, and direct technical consultations.
@@ -352,7 +365,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* LEFT COLUMN (5 Cols): Direct Connection Badges */}
-          <div ref={leftColRef} className="lg:col-span-5 flex flex-col gap-4">
+          <div ref={leftColRef} style={initialStyle} className="lg:col-span-5 flex flex-col gap-4">
             
             {/* Email Connection Badge */}
             <div className="p-5 rounded-2xl bg-kiwi-surface/85 border border-kiwi-border hover:border-kiwi/50 transition-all duration-300 flex items-center justify-between gap-4 shadow-xl group">
@@ -431,19 +444,19 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
               <div>
                 <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">Academic Affiliation</span>
                 <p className="text-sm font-semibold text-white">VIT Chennai &bull; B.Tech Computer Science</p>
-                <span className="text-xs text-zinc-500 font-mono">3rd Year (Class of 2027)</span>
+                <span ref={academicYearRef} className="text-xs text-zinc-500 font-mono">3rd Year (Class of 2027)</span>
               </div>
             </div>
 
             {/* Status Pill */}
             <div className="p-3.5 rounded-xl bg-black/60 border border-kiwi/30 flex items-center gap-2.5 text-xs font-mono text-kiwi">
               <span className="w-2 h-2 rounded-full bg-kiwi animate-ping shrink-0" />
-              <span>Status: Available for Q2/Q3 2026 Internships</span>
+              <span ref={statusPillRef}>Status: Available for Q2/Q3 2026 Internships</span>
             </div>
           </div>
 
           {/* RIGHT COLUMN (7 Cols): Collaborative Message Composer Card */}
-          <div ref={composerCardRef} className="lg:col-span-7">
+          <div ref={composerCardRef} style={initialStyle} className="lg:col-span-7">
             <div className="relative p-6 sm:p-8 rounded-2xl bg-kiwi-surface/85 border border-kiwi-border shadow-2xl overflow-hidden h-full flex flex-col justify-between gap-6">
               
               {/* CARD HEADER */}
@@ -452,7 +465,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                   <span className="text-[10px] font-mono uppercase tracking-wider text-kiwi">Collaborative Dispatch</span>
                   <h3 className="text-xl font-bold text-white tracking-tight">Direct Message Composer</h3>
                 </div>
-                <span className="px-2 py-0.5 text-[10px] font-mono rounded bg-black/80 border border-zinc-800 text-zinc-400">
+                <span ref={verifiedBadgeRef} className="px-2 py-0.5 text-[10px] font-mono rounded bg-black/80 border border-zinc-800 text-zinc-400">
                   P-256 Verified
                 </span>
               </div>

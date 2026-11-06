@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { 
   Code2, 
   Layout, 
@@ -6,9 +6,10 @@ import {
   Shield, 
   Layers
 } from 'lucide-react';
-import { gsap, ScrollTrigger, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition } from '../../animation/motionUtils';
+import { gsap, ScrollTrigger, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition, addCurvedCursorTravel, addSelectionBoxBuild, createFixedGuideLinesOverlay, addCursorIdleDrift, headingReveal } from '../../animation/motionUtils';
 import { useChoreographer } from '../../animation/ChoreographerContext';
-import { SelectionBox, GuideLines, CursorAgent } from '../canvas/overlays';
+import { useSectionChoreographer, ChoreographerLayer } from '../../animation/CursorChoreographer';
+import { GuideLines } from '../canvas/overlays';
 
 interface SkillsCanvasProps {
   buildKey?: number;
@@ -75,10 +76,11 @@ const SKILL_TRAYS: SkillTrayData[] = [
 
 export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
   const containerRef = useRef<HTMLElement>(null);
-  const { personaPool, isMobile, prefersReducedMotion, rebuildOnReentry } = useChoreographer();
+  const { isMobile, prefersReducedMotion, rebuildOnReentry } = useChoreographer();
 
   // Header Elements
   const headerBadgeRef = useRef<HTMLDivElement>(null);
+  const headerBadgeTextRef = useRef<HTMLSpanElement>(null);
   const headerTitleRef = useRef<HTMLHeadingElement>(null);
   const headerDescRef = useRef<HTMLParagraphElement>(null);
 
@@ -90,31 +92,37 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
     useRef<HTMLDivElement>(null),
   ];
 
-  // Selection Boxes (1 header + 4 trays)
-  const boxHeaderRef = useRef<HTMLDivElement>(null);
-  const boxTrayRefs = [
-    useRef<HTMLDivElement>(null),
-    useRef<HTMLDivElement>(null),
-    useRef<HTMLDivElement>(null),
-    useRef<HTMLDivElement>(null),
+  const trayBadgeRefs = [
+    useRef<HTMLSpanElement>(null),
+    useRef<HTMLSpanElement>(null),
+    useRef<HTMLSpanElement>(null),
+    useRef<HTMLSpanElement>(null),
   ];
 
-  // Cursors (1 header + 4 trays)
-  const cursorHeaderRef = useRef<HTMLDivElement>(null);
-  const cursorTrayRefs = [
-    useRef<HTMLDivElement>(null),
-    useRef<HTMLDivElement>(null),
-    useRef<HTMLDivElement>(null),
-    useRef<HTMLDivElement>(null),
-  ];
+  // Pool-managed autonomous cursor choreographer
+  const { agents, assign, releaseAll } = useSectionChoreographer(isMobile);
 
-  // GuideLines Refs
-  const hLineRef = useRef<HTMLDivElement>(null);
-  const vLineRef = useRef<HTMLDivElement>(null);
-  const rulerRef = useRef<HTMLDivElement>(null);
+  const initialStyle = prefersReducedMotion ? undefined : { opacity: 0, visibility: 'hidden' as const };
 
-  // Dimensions state
-  const [boxDims, setBoxDims] = useState<Record<string, { width: number; height: number }>>({});
+  useLayoutEffect(() => {
+    if (prefersReducedMotion) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const ctx = gsap.context(() => {
+      gsap.set(
+        [
+          headerBadgeRef.current,
+          headerTitleRef.current,
+          headerDescRef.current,
+          ...trayRefs.map((r) => r.current),
+        ].filter(Boolean),
+        { autoAlpha: 0 }
+      );
+    }, container);
+
+    return () => ctx.revert();
+  }, [buildKey, prefersReducedMotion]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -138,15 +146,8 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
           ...trayRefs.map((r) => r.current),
         ].filter(Boolean) as HTMLElement[];
 
-        const allBoxes = [
-          boxHeaderRef.current,
-          ...boxTrayRefs.map((r) => r.current),
-        ].filter(Boolean) as HTMLElement[];
-
-        const allCursors = [
-          cursorHeaderRef.current,
-          ...cursorTrayRefs.map((r) => r.current),
-        ].filter(Boolean) as HTMLElement[];
+        const allBoxes = agents.map((a) => a.boxRef.current).filter(Boolean) as HTMLElement[];
+        const allCursors = agents.map((a) => a.cursorRef.current).filter(Boolean) as HTMLElement[];
 
         if (prefersReducedMotion) {
           gsap.set(allContentElements, { autoAlpha: 1, y: 0, filter: 'none', clipPath: 'none' });
@@ -158,26 +159,34 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
         // Hide content initially in layout
         gsap.set(allContentElements, { autoAlpha: 0 });
         gsap.set(allBoxes, { autoAlpha: 0 });
-        gsap.set([hLineRef.current, vLineRef.current], { autoAlpha: 0 });
 
         const targets = [
-          { key: 'header', el: headerTitleRef.current, box: boxHeaderRef.current, cursor: cursorHeaderRef.current, delay: 0.0, isHeadline: true },
-          { key: 't0', el: trayRefs[0].current, box: boxTrayRefs[0].current, cursor: cursorTrayRefs[0].current, delay: 0.15, isHeadline: false },
-          { key: 't1', el: trayRefs[1].current, box: boxTrayRefs[1].current, cursor: cursorTrayRefs[1].current, delay: 0.25, isHeadline: false },
-          { key: 't2', el: trayRefs[2].current, box: boxTrayRefs[2].current, cursor: cursorTrayRefs[2].current, delay: 0.35, isHeadline: false },
-          { key: 't3', el: trayRefs[3].current, box: boxTrayRefs[3].current, cursor: cursorTrayRefs[3].current, delay: 0.45, isHeadline: false },
+          { key: 'header', el: headerTitleRef.current, label: 'Select Skills', delay: 0.0, isHeadline: true },
+          { key: 't0', el: trayRefs[0].current, label: 'Languages Tray', delay: 0.15, isHeadline: false },
+          { key: 't1', el: trayRefs[1].current, label: 'Frontend Tray', delay: 0.25, isHeadline: false },
+          { key: 't2', el: trayRefs[2].current, label: 'Backend AI Tray', delay: 0.35, isHeadline: false },
+          { key: 't3', el: trayRefs[3].current, label: 'Systems Sec Tray', delay: 0.45, isHeadline: false },
         ];
 
-        const calculatedDims: Record<string, { width: number; height: number }> = {};
         const measured = targets.map((t) => {
           if (!t.el) return null;
           const bounds = getRelativeBounds(t.el, container);
-          calculatedDims[t.key] = { width: bounds.width, height: bounds.height };
           const start = getRandomEdgePosition(containerW, containerH);
-          return { ...t, bounds, start };
-        }).filter(Boolean) as (typeof targets[0] & { bounds: { x: number; y: number; width: number; height: number }; start: { x: number; y: number } })[];
-
-        setBoxDims(calculatedDims);
+          const agent = assign({ target: t.el, label: t.label, isHeadline: t.isHeadline });
+          return {
+            ...t,
+            bounds,
+            start,
+            agent,
+            box: agent.boxRef.current,
+            cursor: agent.cursorRef.current,
+          };
+        }).filter(Boolean) as (typeof targets[0] & {
+          bounds: { x: number; y: number; width: number; height: number };
+          start: { x: number; y: number };
+          box: HTMLDivElement | null;
+          cursor: HTMLDivElement | null;
+        })[];
 
         // Position cursors at initial off-screen edges
         measured.forEach((t) => {
@@ -196,15 +205,16 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
             },
           });
 
-        // Red ruler line
-        if (rulerRef.current && !isMobile) {
-          tl.fromTo(
-            rulerRef.current,
-            { scaleY: 0, transformOrigin: 'top center', autoAlpha: 0 },
-            { scaleY: 1, autoAlpha: 0.8, duration: 0.7, ease: 'power2.out' },
-            0.0
-          );
-        }
+        // Fixed viewport guide lines overlay (2-4 H & V lines spanning viewport + red ruler)
+        const cleanupGuideLines = createFixedGuideLinesOverlay(
+          tl,
+          [headerTitleRef.current, trayRefs[0].current, trayRefs[1].current, trayRefs[2].current].filter(Boolean) as HTMLElement[],
+          {
+            showRuler: !isMobile,
+            rulerOffset: isMobile ? 12 : 28,
+            delay: 0.05,
+          }
+        );
 
         // Header badge & desc
         if (headerBadgeRef.current) {
@@ -214,74 +224,76 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
           tl.fromTo(headerDescRef.current, { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: 0.5 }, 0.2);
         }
 
-        // Concurrently build trays with 60ms stagger
-        measured.forEach((t) => {
-          const { el, box, cursor, bounds, delay, isHeadline } = t;
-
-          // 1. Cursor enters
-          if (cursor) {
-            tl.to(
-              cursor,
-              {
-                x: bounds.x + Math.min(16, bounds.width * 0.1),
-                y: bounds.y + Math.min(16, bounds.height * 0.2),
-                duration: 0.65,
-                ease: 'back.out(1.4)',
+        // Stat Scramble: Header Badge
+        if (headerBadgeTextRef.current) {
+          tl.to(
+            headerBadgeTextRef.current,
+            {
+              scrambleText: {
+                text: 'Skill Matrix • Production Architecture',
+                chars: '0123456789ABCDEF!<>-_/[]{}',
+                speed: 0.5,
               },
-              delay
+              duration: 0.75,
+              ease: 'none',
+            },
+            0.15
+          );
+        }
+
+        // Stat Scramble: Tray Badges
+        SKILL_TRAYS.forEach((tray, idx) => {
+          if (trayBadgeRefs[idx].current) {
+            tl.to(
+              trayBadgeRefs[idx].current,
+              {
+                scrambleText: {
+                  text: tray.badge,
+                  chars: '0123456789ABCDEF!<>-_/[]{}',
+                  speed: 0.5,
+                },
+                duration: 0.7,
+                ease: 'none',
+              },
+              0.25 + idx * 0.1
             );
           }
+        });
 
-          // 2. Selection Box expands with 8 handles
+        // Concurrently build trays with 60ms stagger
+        measured.forEach((t, i) => {
+          const { el, box, cursor, bounds, delay, isHeadline } = t;
+          const targetPos = {
+            x: bounds.x + Math.min(16, bounds.width * 0.1),
+            y: bounds.y + Math.min(16, bounds.height * 0.2),
+          };
+
+          // 1. Cursor enters along curved path with overshoot and banking
+          if (cursor) {
+            addCurvedCursorTravel(tl, cursor, t.start, targetPos, {
+              duration: 0.75,
+              position: delay,
+              ease: 'back.out(1.2)',
+            });
+          }
+
+          // 2. Selection Box expands with 8 handles via transforms
           if (box) {
-            tl.fromTo(
-              box,
-              {
-                x: bounds.x,
-                y: bounds.y,
-                width: 28,
-                height: 18,
-                autoAlpha: 1,
-              },
-              {
-                x: bounds.x,
-                y: bounds.y,
-                width: bounds.width,
-                height: bounds.height,
-                duration: 0.52,
-                ease: 'expo.out',
-              },
-              delay + 0.2
-            );
-
-            // Snap guide lines
-            if (hLineRef.current && vLineRef.current && !isMobile) {
-              tl.set(hLineRef.current, { top: bounds.y, autoAlpha: 0.7 }, delay + 0.2);
-              tl.set(vLineRef.current, { left: bounds.x, autoAlpha: 0.7 }, delay + 0.2);
-              tl.to([hLineRef.current, vLineRef.current], { autoAlpha: 0, duration: 0.25 }, delay + 0.45);
-            }
-
-            // Selection box fades out
-            tl.to(
-              box,
-              {
-                autoAlpha: 0,
-                duration: 0.35,
-                ease: 'power2.inOut',
-              },
-              delay + 0.8
-            );
+            addSelectionBoxBuild(tl, box, bounds, targetPos, {
+              delay: delay + 0.2,
+              duration: 0.52,
+              fadeDelay: delay + 0.8,
+              ease: 'expo.out',
+            });
           }
 
           // 3. Tray reveals inside box
           if (el) {
             if (isHeadline) {
-              tl.fromTo(
-                el,
-                { autoAlpha: 0, filter: 'blur(8px)', y: 12, clipPath: 'inset(0 0 100% 0)' },
-                { autoAlpha: 1, filter: 'blur(0px)', y: 0, clipPath: 'inset(0 0 0% 0)', duration: 0.7, ease: 'power3.out' },
-                delay + 0.35
-              );
+              headingReveal(tl, el, {
+                duration: 0.7,
+                position: delay + 0.35,
+              });
             } else {
               tl.fromTo(
                 el,
@@ -294,30 +306,21 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
 
           // 4. Cursor idles & drifts to edge
           if (cursor) {
-            const idleOffset = getRandomEdgePosition(containerW, containerH);
-            tl.to(
+            addCursorIdleDrift(
+              tl,
               cursor,
-              {
-                x: bounds.x + (Math.random() - 0.5) * 40,
-                y: bounds.y + (Math.random() - 0.5) * 40,
-                duration: 0.45,
-                ease: 'power1.out',
-              },
-              delay + 0.75
-            );
-            tl.to(
-              cursor,
-              {
-                x: idleOffset.x * 0.85,
-                y: idleOffset.y * 0.85,
-                opacity: 0.3,
-                duration: 1.5,
-                ease: 'power2.out',
-              },
-              delay + 1.2
+              i,
+              measured.length,
+              containerW,
+              containerH,
+              delay + 1.0
             );
           }
         });
+
+        return () => {
+          cleanupGuideLines?.();
+        };
       });
 
       // Ensure ScrollTrigger updates trigger metrics after DOM calculations
@@ -329,6 +332,7 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
 
     return () => {
       isCancelled = true;
+      releaseAll();
       ctx.revert();
     };
   }, [buildKey, prefersReducedMotion, isMobile, rebuildOnReentry]);
@@ -343,37 +347,24 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
       <GuideLines
         showRuler={!isMobile}
         rulerOffset={isMobile ? 12 : 28}
-        hLineRef={hLineRef}
-        vLineRef={vLineRef}
-        rulerRef={rulerRef}
       />
 
-      {/* 2. SELECTION BOXES LAYER */}
-      <SelectionBox ref={boxHeaderRef} dimensions={boxDims['header']} />
-      <SelectionBox ref={boxTrayRefs[0]} dimensions={boxDims['t0']} />
-      <SelectionBox ref={boxTrayRefs[1]} dimensions={boxDims['t1']} />
-      <SelectionBox ref={boxTrayRefs[2]} dimensions={boxDims['t2']} />
-      <SelectionBox ref={boxTrayRefs[3]} dimensions={boxDims['t3']} />
-
-      {/* 3. AUTONOMOUS CURSOR AGENTS LAYER */}
-      <CursorAgent ref={cursorHeaderRef} persona={personaPool[0] || { id: 'dev', name: 'Dev [Kishal]', role: 'Lead', color: '#CCFF00' }} actionLabel="Select Skills" />
-      <CursorAgent ref={cursorTrayRefs[0]} persona={personaPool[7] || { id: 'syntax', name: 'Syntax_Worker', role: 'Runtime', color: '#CCFF00' }} actionLabel="Languages Tray" />
-      <CursorAgent ref={cursorTrayRefs[1]} persona={personaPool[1] || { id: 'ui', name: 'UI_Design', role: 'Interface', color: '#FFFF00' }} actionLabel="Frontend Tray" />
-      <CursorAgent ref={cursorTrayRefs[2]} persona={personaPool[9] || { id: 'rag', name: 'RAG_Worker', role: 'AI', color: '#DFFF00' }} actionLabel="Backend AI Tray" />
-      <CursorAgent ref={cursorTrayRefs[3]} persona={personaPool[2] || { id: 'secops', name: 'SecOps', role: 'Security', color: '#FFFF00' }} actionLabel="Systems Sec Tray" />
+      {/* 2. POOL-MANAGED AUTONOMOUS CURSOR & SELECTION BOX OVERLAYS */}
+      <ChoreographerLayer agents={agents} />
 
       {/* 4. MAIN CONTENT DOM (Kept in layout; measured then revealed) */}
       <div className="flex flex-col gap-8 relative z-10">
         
         {/* SECTION HEADER */}
         <div className="space-y-3 max-w-3xl min-h-[100px]">
-          <div ref={headerBadgeRef} className="inline-flex items-center gap-2 text-xs font-mono text-kiwi">
+          <div ref={headerBadgeRef} style={initialStyle} className="inline-flex items-center gap-2 text-xs font-mono text-kiwi">
             <Layers size={14} />
-            <span>Skill Matrix &bull; Production Architecture</span>
+            <span ref={headerBadgeTextRef}>Skill Matrix &bull; Production Architecture</span>
           </div>
 
           <h2 
             ref={headerTitleRef}
+            style={initialStyle}
             className="text-3xl sm:text-5xl font-bold tracking-tight text-white leading-tight font-sans inline-block"
           >
             Technical Arsenal &amp; Auto-Layout Trays
@@ -381,6 +372,7 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
 
           <p 
             ref={headerDescRef}
+            style={initialStyle}
             className="text-zinc-300 text-sm sm:text-base leading-relaxed"
           >
             Domain-categorized auto-layout trays spanning system kernels, real-time AI vector stores, full-stack client runtimes, and cryptographic edge protocols.
@@ -395,6 +387,7 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
               <div 
                 key={tray.id}
                 ref={trayRefs[idx]}
+                style={initialStyle}
                 className="relative min-h-[260px]"
               >
                 <div className="relative p-6 sm:p-7 rounded-2xl bg-kiwi-surface/85 border border-kiwi-border hover:border-kiwi/50 transition-all duration-300 flex flex-col justify-between gap-5 shadow-xl overflow-hidden h-full group">
@@ -410,6 +403,7 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
 
                     <div className="flex-1 min-w-0">
                       <span 
+                        ref={trayBadgeRefs[idx]}
                         className="text-[10px] font-mono font-semibold tracking-wide uppercase px-2 py-0.5 rounded bg-black/80 border inline-block"
                         style={{ 
                           color: tray.color,
