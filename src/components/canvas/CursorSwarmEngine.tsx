@@ -12,6 +12,14 @@ const SWARM_PERSONAS: CursorPersona[] = [
     textColor: '#CCFF00',
   },
   {
+    id: 'ui-ux',
+    name: 'UI_Design',
+    role: 'Layout & Auto-Layout',
+    color: '#CCFF00',
+    accentBg: '#12140D',
+    textColor: '#CCFF00',
+  },
+  {
     id: 'secops',
     name: 'SecOps',
     role: 'Security & Verification',
@@ -26,14 +34,6 @@ const SWARM_PERSONAS: CursorPersona[] = [
     color: '#DFFF00', // Chartreuse
     accentBg: '#13140D',
     textColor: '#DFFF00',
-  },
-  {
-    id: 'ui-ux',
-    name: 'UI_Design',
-    role: 'Layout & Auto-Layout',
-    color: '#CCFF00',
-    accentBg: '#12140D',
-    textColor: '#CCFF00',
   },
   {
     id: 'kernel',
@@ -97,117 +97,115 @@ export const CursorSwarmEngine = () => {
     };
   }, []);
 
-  // Compute dynamic positions for the swarm based on scroll and screen layout
+  // Compute dynamic positions for the swarm across scroll progress
   const cursorStates = useMemo(() => {
     const states: Record<string, CursorState> = {};
     const centerX = viewportWidth / 2;
 
-    // Scroll interpolation phases
-    // Zone 1: Hero Section (0 - 350px)
-    // Zone 2: Design System & Swatches (350px - 850px)
-    // Zone 3: Lower Technical Pillars (850px+)
-
-    if (scrollY < 350) {
-      // SQUAD A (Frame Builders): Dev [Kishal] & UI_Design pulling opposite corners
+    // Zone 1: Hero Section Assembly (Scroll 0 - 380px)
+    if (scrollY < 380) {
+      // 1. Dev [Kishal]: Pulling Top-Left corner anchor handle
       states['dev-kishal'] = {
-        x: Math.max(30, centerX - 420),
-        y: 200 + scrollY * 0.4,
-        actionText: '960 × 440',
+        x: Math.max(20, centerX - 480),
+        y: 110 + scrollY * 0.35,
+        actionText: '980 × 520',
         isDrawing: true,
       };
 
+      // 2. UI_Design: Pulling Bottom-Right corner anchor handle
       states['ui-ux'] = {
-        x: Math.min(viewportWidth - 140, centerX + 380),
-        y: 420 + scrollY * 0.3,
-        actionText: 'Auto-Layout [H]',
+        x: Math.min(viewportWidth - 140, centerX + 440),
+        y: 530 + scrollY * 0.25,
+        actionText: 'auto-layout: 32px',
         isDrawing: true,
       };
 
-      // SQUAD B (Tag Injectors): SecOps & AI_Agent dropping badges
+      // 3. SecOps: Inspecting ThreatLens chip
       states['secops'] = {
-        x: Math.max(50, centerX - 120),
-        y: 155 + scrollY * 0.2,
+        x: Math.max(60, centerX - 140),
+        y: 180 + scrollY * 0.28,
         actionText: '✓ P-256 ECDSA',
       };
 
+      // 4. AI_Agent [RAG]: Inspecting FAISS RAG badge
       states['ai-rag'] = {
-        x: Math.min(viewportWidth - 160, centerX + 180),
-        y: 280 + scrollY * 0.35,
+        x: Math.min(viewportWidth - 170, centerX + 180),
+        y: 185 + scrollY * 0.26,
         actionText: 'FAISS Vector RAG',
       };
 
-      // SQUAD C (Review & Kernel): Inspecting CTA buttons
+      // 5. Kernel [Linux]: Hovering near Primary CTA
       states['kernel'] = {
-        x: Math.max(40, centerX - 320),
-        y: 460 + scrollY * 0.45,
-        actionText: 'Linux CLI',
+        x: Math.max(40, centerX - 360),
+        y: 420 + scrollY * 0.38,
+        actionText: 'Click: #projects',
       };
 
+      // 6. QA_Audit: Stamping bottom spec check
       states['qa-audit'] = {
-        x: Math.min(viewportWidth - 180, centerX + 140),
-        y: 455 + scrollY * 0.4,
+        x: Math.min(viewportWidth - 160, centerX + 260),
+        y: 480 + scrollY * 0.3,
         actionText: 'PASS: 100%',
       };
 
+      // 7. Reviewer: Inspecting top tag
       states['reviewer'] = {
-        x: Math.min(viewportWidth - 120, centerX + 320),
-        y: 90 + scrollY * 0.1,
-        actionText: 'Spec Approved',
+        x: Math.max(40, centerX - 380),
+        y: 95 + scrollY * 0.15,
+        actionText: 'HeroSection.instance',
       };
     } else {
-      // Swarm converges onto Design System & Technical Pillars
-      const offset = scrollY - 350;
+      // Zone 2: Swarm glides down into Design System & Foundation Cards
+      const offset = scrollY - 380;
 
-      // Dev [Kishal] & SecOps inspect the color architecture tokens
       states['dev-kishal'] = {
-        x: Math.max(40, centerX - 340 + Math.sin(offset * 0.01) * 15),
-        y: 560 + offset * 0.7,
+        x: Math.max(40, centerX - 360 + Math.sin(offset * 0.01) * 15),
+        y: 640 + offset * 0.75,
         actionText: '#CCFF00 Kiwi',
         isDrawing: false,
       };
 
       states['secops'] = {
         x: Math.max(60, centerX - 120),
-        y: 580 + offset * 0.75,
-        actionText: '#FFFF00 Alert',
+        y: 660 + offset * 0.78,
+        actionText: '#FFFF00 SecOps',
       };
 
       states['ai-rag'] = {
-        x: Math.min(viewportWidth - 160, centerX + 110),
-        y: 575 + offset * 0.72,
-        actionText: '#DFFF00 Node',
+        x: Math.min(viewportWidth - 160, centerX + 120),
+        y: 655 + offset * 0.74,
+        actionText: '#DFFF00 RAG',
       };
 
       states['ui-ux'] = {
-        x: Math.min(viewportWidth - 140, centerX + 340),
-        y: 590 + offset * 0.68,
+        x: Math.min(viewportWidth - 140, centerX + 360),
+        y: 670 + offset * 0.72,
         actionText: 'snap: 24px',
       };
 
-      // Kernel, QA, and Reviewer converge on Technical Pillars
       states['kernel'] = {
-        x: Math.max(30, centerX - 360),
-        y: 780 + offset * 0.85,
-        actionText: 'Hyprland Rice',
+        x: Math.max(30, centerX - 380),
+        y: 860 + offset * 0.86,
+        actionText: 'Linux Architecture',
       };
 
       states['qa-audit'] = {
         x: centerX - 20,
-        y: 790 + offset * 0.88,
-        actionText: 'ThreatLens Zero-Day',
+        y: 870 + offset * 0.88,
+        actionText: 'Security Verified',
       };
 
       states['reviewer'] = {
-        x: Math.min(viewportWidth - 140, centerX + 320),
-        y: 775 + offset * 0.82,
-        actionText: 'Clean Code',
+        x: Math.min(viewportWidth - 140, centerX + 340),
+        y: 855 + offset * 0.84,
+        actionText: 'Spec Approved',
       };
     }
 
     return states;
   }, [scrollY, viewportWidth]);
 
-  // On mobile screens, display a minimal 2-cursor squad so content stays readable
+  // On mobile screens, limit active cursors to 2 so reading is comfortable
   const activePersonas = isMobile 
     ? SWARM_PERSONAS.slice(0, 2) 
     : SWARM_PERSONAS;
@@ -235,4 +233,3 @@ export const CursorSwarmEngine = () => {
     </div>
   );
 };
-
