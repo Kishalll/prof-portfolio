@@ -69,7 +69,7 @@ export const CursorAgent = forwardRef<HTMLDivElement, CursorAgentProps>(
             {persona.name}
           </span>
 
-          {actionLabel && (
+          {actionLabel && actionLabel !== persona.name && (
             <span className="px-1.5 py-0.5 text-[8.5px] font-mono font-medium rounded shadow bg-black/90 text-zinc-300 border border-zinc-800 whitespace-nowrap">
               {actionLabel}
             </span>

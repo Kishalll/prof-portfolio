@@ -89,6 +89,10 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
         ].filter(Boolean),
         { autoAlpha: 0 }
       );
+      agents.forEach((agent) => {
+        if (agent.cursorRef.current) gsap.set(agent.cursorRef.current, { autoAlpha: 0 });
+        if (agent.boxRef.current) gsap.set(agent.boxRef.current, { autoAlpha: 0 });
+      });
     }, container);
 
     return () => ctx.revert();

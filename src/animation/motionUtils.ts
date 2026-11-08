@@ -164,7 +164,7 @@ export function addCurvedCursorTravel(
 
   const proxy = { t: 0 };
 
-  // Set initial position inside the timeline so it resets cleanly on every restart
+  // Set initial position inside the timeline so it resets cleanly on every restart (prevent premature render before trigger)
   tl.set(
     cursorEl,
     {
@@ -172,6 +172,7 @@ export function addCurvedCursorTravel(
       y: start.y,
       rotation: 0,
       autoAlpha: 1,
+      immediateRender: false,
     },
     position
   );
@@ -262,6 +263,7 @@ export function addSelectionBoxBuild(
       scaleX: startScaleX,
       scaleY: startScaleY,
       autoAlpha: 1,
+      immediateRender: false,
     },
     delay
   );
@@ -274,6 +276,7 @@ export function addSelectionBoxBuild(
         scaleX: 1 / startScaleX,
         scaleY: 1 / startScaleY,
         transformOrigin: 'center center',
+        immediateRender: false,
       },
       delay
     );
@@ -286,6 +289,7 @@ export function addSelectionBoxBuild(
         scaleX: 1 / startScaleX,
         scaleY: 1 / startScaleY,
         transformOrigin: 'top center',
+        immediateRender: false,
       },
       delay
     );
@@ -424,6 +428,14 @@ function onFollowerTick() {
     }
 
     const cRect = follower.containerEl.getBoundingClientRect();
+    const isSectionVisible = cRect.bottom > 0 && cRect.top < window.innerHeight;
+
+    if (!isSectionVisible) {
+      // Section is off-screen: hide cursor so it never bleeds or gets stuck across sections
+      gsap.set(follower.cursorEl, { autoAlpha: 0 });
+      return;
+    }
+
     const targetX = mouse.clientX - cRect.left + follower.dx;
     const targetY = mouse.clientY - cRect.top + follower.dy;
 

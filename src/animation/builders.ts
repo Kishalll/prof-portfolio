@@ -2,11 +2,11 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { SplitText } from 'gsap/SplitText';
 import { ChoreographerAgent } from './CursorChoreographer';
-import { 
-  getRelativeBounds, 
-  getVisibleViewportSpawn, 
-  addCurvedCursorTravel, 
-  addSelectionBoxBuild, 
+import {
+  getRelativeBounds,
+  getVisibleViewportSpawn,
+  addCurvedCursorTravel,
+  addSelectionBoxBuild,
   addCursorIdleDrift,
   detachCursorFromUserFollow
 } from './motionUtils';
@@ -86,7 +86,7 @@ export function createTargetGuideLines(
   bounds: { x: number; y: number; width: number; height: number },
   options: { delay?: number; isMobile?: boolean } = {}
 ): () => void {
-  if (options.isMobile || typeof document === 'undefined') return () => {};
+  if (options.isMobile || typeof document === 'undefined') return () => { };
 
   const delay = options.delay ?? 0.1;
   const lines: HTMLElement[] = [];
@@ -99,7 +99,7 @@ export function createTargetGuideLines(
   containerEl.appendChild(hLine);
   lines.push(hLine);
 
-  tl.set(hLine, { y: bounds.y, transformOrigin: 'left center' }, delay);
+  tl.set(hLine, { y: bounds.y, transformOrigin: 'left center', immediateRender: false }, delay);
   tl.fromTo(
     hLine,
     { scaleX: 0, autoAlpha: 0.75 },
@@ -114,7 +114,7 @@ export function createTargetGuideLines(
   containerEl.appendChild(vLine);
   lines.push(vLine);
 
-  tl.set(vLine, { x: bounds.x, transformOrigin: 'top center' }, delay);
+  tl.set(vLine, { x: bounds.x, transformOrigin: 'top center', immediateRender: false }, delay);
   tl.fromTo(
     vLine,
     { scaleY: 0, autoAlpha: 0.75 },
@@ -295,8 +295,8 @@ export function buildText(
   const charSpeed = isHeadline
     ? 0.03
     : isParagraph
-    ? Math.max(0.008, Math.min(0.013, 1.1 / Math.max(1, split.chars.length)))
-    : 0.018;
+      ? Math.max(0.008, Math.min(0.013, 1.1 / Math.max(1, split.chars.length)))
+      : 0.018;
 
   const activeSplit = split;
   const activeCaret = caretEl;
