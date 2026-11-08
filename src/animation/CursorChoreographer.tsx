@@ -1,7 +1,16 @@
 import React, { useRef, useMemo, useCallback } from 'react';
 import { AgentPersona } from './types';
 import { DEFAULT_PERSONA_POOL } from './personas';
+import { swarm } from './swarm';
 import { SelectionBox, CursorAgent } from '../components/canvas/overlays';
+
+/**
+ * Number of section-level cursor + selection-box elements rendered per section.
+ * Independent of the swarm size: the swarm (global flock) has 12 agents on desktop and 4 on
+ * mobile, but each section needs one element pair per build target so that two builds never
+ * share (and fight over) the same DOM nodes.
+ */
+const SECTION_ELEMENT_POOL = Math.min(12, DEFAULT_PERSONA_POOL.length);
 
 export interface ChoreographerTask {
   target: HTMLElement | null;
@@ -34,8 +43,8 @@ export class CursorChoreographer {
     this.initPool(isMobile);
   }
 
-  public initPool(isMobile: boolean) {
-    this.maxPoolSize = isMobile ? 4 : Math.min(12, DEFAULT_PERSONA_POOL.length);
+  public initPool(_isMobile: boolean) {
+    this.maxPoolSize = SECTION_ELEMENT_POOL;
     const personas = DEFAULT_PERSONA_POOL.slice(0, this.maxPoolSize);
 
     this.pool = personas.map((persona, idx) => ({
@@ -94,8 +103,8 @@ export class CursorChoreographer {
 /**
  * Hook providing a scoped choreographer instance with stable DOM refs for sections
  */
-export function useSectionChoreographer(isMobile: boolean = false) {
-  const poolCap = isMobile ? 4 : Math.min(12, DEFAULT_PERSONA_POOL.length);
+export function useSectionChoreographer(_isMobile: boolean = false) {
+  const poolCap = SECTION_ELEMENT_POOL;
   const personas = useMemo(() => DEFAULT_PERSONA_POOL.slice(0, poolCap), [poolCap]);
 
   // Create stable refs array
@@ -145,6 +154,8 @@ export function useSectionChoreographer(isMobile: boolean = false) {
   }, [agents]);
 
   const releaseAll = useCallback(() => {
+    // Any swarm agent still away on one of this section's builds flies back to the flock
+    swarm.handBackByCursorEls(agents.map((a) => a.cursorRef.current));
     agents.forEach((a) => {
       a.isBusy = false;
       a.target = null;

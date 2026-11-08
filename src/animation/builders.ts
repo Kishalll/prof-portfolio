@@ -7,9 +7,9 @@ import {
   getVisibleViewportSpawn,
   addCurvedCursorTravel,
   addSelectionBoxBuild,
-  addCursorIdleDrift,
-  detachCursorFromUserFollow
+  addSwarmReturn,
 } from './motionUtils';
+import { swarm } from './swarm';
 
 /**
  * Creates ScrollTrigger hooks for a single leaf target:
@@ -29,24 +29,40 @@ export function createTargetTrigger(
   const staggerDelay = options.staggerDelay ?? 0;
 
   let isBuilt = false;
+  let pendingStart: gsap.core.Tween | null = null;
+
+  const cancelPendingStart = () => {
+    if (pendingStart) {
+      pendingStart.kill();
+      pendingStart = null;
+    }
+  };
 
   const runBuild = () => {
     if (isBuilt) return; // "A target that is built and still visible never rebuilds"
     isBuilt = true;
     if (staggerDelay > 0) {
-      gsap.delayedCall(staggerDelay, () => buildTl.restart());
+      cancelPendingStart();
+      pendingStart = gsap.delayedCall(staggerDelay, () => {
+        pendingStart = null;
+        // The target may have scrolled away during the stagger: never build off-screen
+        if (entryTrigger.isActive) buildTl.restart();
+        else isBuilt = false;
+      });
     } else {
       buildTl.restart();
     }
   };
 
   const handleReset = () => {
+    // A build still waiting for its stagger delay must not fire after the target is gone
+    cancelPendingStart();
     isBuilt = false;
     buildTl.pause(0);
     onReset();
   };
 
-  const entryTrigger = ScrollTrigger.create({
+  const entryTrigger: ScrollTrigger = ScrollTrigger.create({
     trigger: targetEl,
     start: 'top 90%',
     end: 'bottom top',
@@ -70,6 +86,7 @@ export function createTargetTrigger(
   }
 
   return () => {
+    cancelPendingStart();
     entryTrigger.kill();
     resetTrigger?.kill();
   };
@@ -136,8 +153,8 @@ export interface BuildTextOptions {
   containerEl: HTMLElement;
   targetEl: HTMLElement;
   agent: ChoreographerAgent;
+  /** Preferred swarm agent (persona) to leave the flock for this build */
   agentIndex: number;
-  totalAgents: number;
   isHeadline?: boolean;
   isParagraph?: boolean;
   isMobile?: boolean;
@@ -164,7 +181,6 @@ export function buildText(
     targetEl,
     agent,
     agentIndex,
-    totalAgents,
     isHeadline = false,
     isParagraph = false,
     isMobile = false,
@@ -174,9 +190,6 @@ export function buildText(
 
   const cursorEl = agent.cursorRef.current;
   const boxEl = agent.boxRef.current;
-  const cRect = containerEl.getBoundingClientRect();
-  const containerW = cRect.width || window.innerWidth;
-  const containerH = cRect.height || 600;
 
   let split: SplitText | null = null;
   let caretEl: HTMLElement | null = null;
@@ -187,7 +200,8 @@ export function buildText(
       gsap.set(boxEl, { autoAlpha: 0, scale: 1 });
     }
     if (cursorEl) {
-      detachCursorFromUserFollow(cursorEl);
+      // If this build's agent is away, it flies back to the swarm from where it is
+      swarm.handBack(tl);
       gsap.set(cursorEl, { autoAlpha: 0, rotation: 0 });
     }
     if (caretEl) {
@@ -264,6 +278,7 @@ export function buildText(
     duration: 0.95,
     position: delay,
     ease: 'back.out(1.2)',
+    depart: { owner: tl, containerEl, index: agentIndex },
   });
 
   const typingStart = delay + 0.65;
@@ -384,10 +399,11 @@ export function buildText(
     ease: 'power2.inOut',
   });
 
-  // Cursor transitions to follow user's cursor
-  addCursorIdleDrift(tl, cursorEl, agentIndex, totalAgents, containerW, containerH, '-=0.2', containerEl);
+  // Cursor rejoins the swarm around the visitor's mouse
+  addSwarmReturn(tl, tl, '-=0.2');
 
   tl.eventCallback('onComplete', () => {
+    swarm.handBack(tl);
     if (activeSplit && activeSplit.chars) {
       gsap.set(activeSplit.chars, { autoAlpha: 1 });
     }
@@ -405,8 +421,8 @@ export interface BuildBlockOptions {
   containerEl: HTMLElement;
   targetEl: HTMLElement;
   agent: ChoreographerAgent;
+  /** Preferred swarm agent (persona) to leave the flock for this build */
   agentIndex: number;
-  totalAgents: number;
   isMobile?: boolean;
   delay?: number;
   onComplete?: () => void;
@@ -418,7 +434,7 @@ export interface BuildBlockOptions {
  * - Box grows from cursor point to element bounds via transforms
  * - Element reveals with autoAlpha & subtle y
  * - Box fades out
- * - Cursor parks in 24px edge margin with yoyo drift
+ * - Cursor rejoins the swarm around the visitor's mouse
  */
 export function buildBlock(
   tl: gsap.core.Timeline,
@@ -429,7 +445,6 @@ export function buildBlock(
     targetEl,
     agent,
     agentIndex,
-    totalAgents,
     isMobile = false,
     delay = 0,
     onComplete,
@@ -437,14 +452,11 @@ export function buildBlock(
 
   const cursorEl = agent.cursorRef.current;
   const boxEl = agent.boxRef.current;
-  const cRect = containerEl.getBoundingClientRect();
-  const containerW = cRect.width || window.innerWidth;
-  const containerH = cRect.height || 600;
 
   const reset = () => {
     if (boxEl) gsap.set(boxEl, { autoAlpha: 0, scale: 1 });
     if (cursorEl) {
-      detachCursorFromUserFollow(cursorEl);
+      swarm.handBack(tl);
       gsap.set(cursorEl, { autoAlpha: 0, rotation: 0 });
     }
     gsap.set(targetEl, { autoAlpha: 0, y: 8 });
@@ -474,6 +486,7 @@ export function buildBlock(
     duration: 0.9,
     position: delay,
     ease: 'back.out(1.2)',
+    depart: { owner: tl, containerEl, index: agentIndex },
   });
 
   // 2. Selection box resizes to bounds via transforms
@@ -500,10 +513,11 @@ export function buildBlock(
     delay + 0.6
   );
 
-  // 5. Cursor transitions to follow user's cursor
-  addCursorIdleDrift(tl, cursorEl, agentIndex, totalAgents, containerW, containerH, delay + 1.1, containerEl);
+  // 5. Cursor rejoins the swarm around the visitor's mouse
+  addSwarmReturn(tl, tl, delay + 1.1);
 
   tl.eventCallback('onComplete', () => {
+    swarm.handBack(tl);
     gsap.set(targetEl, { autoAlpha: 1, y: 0 });
     onComplete?.();
   });
@@ -515,6 +529,8 @@ export interface BuildNavOptions {
   containerEl: HTMLElement;
   navLinks: HTMLElement[];
   agent: ChoreographerAgent;
+  /** Preferred swarm agent (persona) to leave the flock for this build */
+  agentIndex?: number;
   delay?: number;
   onComplete?: () => void;
 }
@@ -529,18 +545,15 @@ export function buildNav(
   tl: gsap.core.Timeline,
   options: BuildNavOptions
 ): { reset: () => void } {
-  const { containerEl, navLinks, agent, delay = 0, onComplete } = options;
+  const { containerEl, navLinks, agent, agentIndex = 1, delay = 0, onComplete } = options;
 
   const cursorEl = agent.cursorRef.current;
   const boxEl = agent.boxRef.current;
-  const cRect = containerEl.getBoundingClientRect();
-  const containerW = cRect.width || window.innerWidth;
-  const containerH = cRect.height || 64;
 
   const reset = () => {
     if (boxEl) gsap.set(boxEl, { autoAlpha: 0, scale: 1 });
     if (cursorEl) {
-      detachCursorFromUserFollow(cursorEl);
+      swarm.handBack(tl);
       gsap.set(cursorEl, { autoAlpha: 0, rotation: 0 });
     }
     navLinks.forEach((link) => {
@@ -576,6 +589,8 @@ export function buildNav(
       duration: 0.45,
       position: stepDelay,
       ease: 'power2.out',
+      // Only the first hop leaves the swarm; later hops continue from the previous link
+      depart: idx === 0 ? { owner: tl, containerEl, index: agentIndex } : undefined,
     });
 
     // Small selection box around link
@@ -607,10 +622,11 @@ export function buildNav(
     prevPos = targetPos;
   });
 
-  // Cursor transitions to follow user's cursor
-  addCursorIdleDrift(tl, cursorEl, 1, 2, containerW, containerH, delay + navLinks.length * 0.28 + 0.4, containerEl);
+  // Cursor rejoins the swarm around the visitor's mouse
+  addSwarmReturn(tl, tl, delay + navLinks.length * 0.28 + 0.4);
 
   tl.eventCallback('onComplete', () => {
+    swarm.handBack(tl);
     navLinks.forEach((link) => gsap.set(link, { autoAlpha: 1, y: 0 }));
     onComplete?.();
   });

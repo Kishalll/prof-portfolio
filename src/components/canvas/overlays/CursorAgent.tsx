@@ -9,6 +9,13 @@ interface CursorAgentProps {
   style?: React.CSSProperties;
 }
 
+/**
+ * Section-level build cursor (the one the build animations drive).
+ *
+ * The `cursor-paint`, `cursor-name` classes and the `data-variant` attribute are hooks used by the
+ * swarm hand-off (`swarm.dispatch`) to re-skin this cursor with the colour and name of whichever
+ * swarm agent leaves the flock to do the build.
+ */
 export const CursorAgent = forwardRef<HTMLDivElement, CursorAgentProps>(
   ({ persona, actionLabel, variant = 'pointer', className = '', style }, ref) => {
     return (
@@ -21,6 +28,7 @@ export const CursorAgent = forwardRef<HTMLDivElement, CursorAgentProps>(
           transform: 'translate3d(-100px, -100px, 0)', // initial off-screen placement
           ...style,
         }}
+        data-variant={variant}
         aria-hidden="true"
       >
         {/* SVG Cursor Pointer or I-Beam */}
@@ -32,6 +40,7 @@ export const CursorAgent = forwardRef<HTMLDivElement, CursorAgentProps>(
             xmlns="http://www.w3.org/2000/svg"
           >
             <path
+              className="cursor-paint"
               d="M7 4H17M12 4V20M7 20H17"
               stroke={persona.color}
               strokeWidth="2.5"
@@ -47,6 +56,7 @@ export const CursorAgent = forwardRef<HTMLDivElement, CursorAgentProps>(
             xmlns="http://www.w3.org/2000/svg"
           >
             <path
+              className="cursor-paint"
               d="M3 1L21 13.5L13.5 15L9.5 23L6.5 21.5L10.5 14L3 1Z"
               fill={persona.color}
               stroke="#000000"
@@ -59,7 +69,7 @@ export const CursorAgent = forwardRef<HTMLDivElement, CursorAgentProps>(
         {/* Persona Name Pill + Optional Action Tag */}
         <div className="flex items-center gap-1.5 ml-2 mt-0.5">
           <span
-            className="px-2 py-0.5 text-[9px] font-mono font-bold rounded shadow-xl whitespace-nowrap border"
+            className="cursor-name px-2 py-0.5 text-[9px] font-mono font-bold rounded shadow-xl whitespace-nowrap border"
             style={{
               backgroundColor: '#0A0B08',
               color: persona.color,
@@ -81,4 +91,3 @@ export const CursorAgent = forwardRef<HTMLDivElement, CursorAgentProps>(
 );
 
 CursorAgent.displayName = 'CursorAgent';
-

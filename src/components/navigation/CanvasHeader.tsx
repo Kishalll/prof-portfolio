@@ -6,7 +6,8 @@ import {
   Linkedin,
   Mail
 } from 'lucide-react';
-import { gsap, waitForFontsAndLayout, getRelativeBounds, getRandomEdgePosition, addCurvedCursorTravel, addSelectionBoxBuild, addCursorIdleDrift, detachCursorFromUserFollow } from '../../animation/motionUtils';
+import { gsap, waitForFontsAndLayout, getRelativeBounds, addCurvedCursorTravel, addSelectionBoxBuild, addSwarmReturn } from '../../animation/motionUtils';
+import { swarm } from '../../animation/swarm';
 import { useChoreographer } from '../../animation/ChoreographerContext';
 import { SelectionBox, CursorAgent } from '../canvas/overlays';
 
@@ -67,10 +68,6 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
         await waitForFontsAndLayout();
         if (isCancelled || !headerEl || !innerBar) return;
 
-        const containerRect = headerEl.getBoundingClientRect();
-        const containerW = containerRect.width || window.innerWidth;
-        const containerH = containerRect.height || 64;
-
         if (prefersReducedMotion) {
           gsap.set([brandRef.current, navRef.current, actionsRef.current].filter(Boolean), { autoAlpha: 1 });
           if (boxRef.current) gsap.set(boxRef.current, { autoAlpha: 0 });
@@ -79,25 +76,21 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
         }
 
         const bounds = getRelativeBounds(innerBar, headerEl);
-        const start = getRandomEdgePosition(containerW, containerH);
         const targetPos = {
           x: bounds.x + Math.min(32, bounds.width * 0.1),
           y: bounds.y + bounds.height * 0.5,
         };
 
-        if (cursorRef.current) {
-          gsap.set(cursorRef.current, { x: start.x, y: start.y, autoAlpha: 1 });
-        }
-
         ctx.add(() => {
           const tl = gsap.timeline();
 
-          // 1. Cursor enters along curved path
+          // 1. A swarm agent leaves the flock and flies in along a curved path
           if (cursorRef.current) {
-            addCurvedCursorTravel(tl, cursorRef.current, start, targetPos, {
+            addCurvedCursorTravel(tl, cursorRef.current, targetPos, targetPos, {
               duration: 0.75,
               position: 0.05,
               ease: 'back.out(1.2)',
+              depart: { owner: tl, containerEl: headerEl, index: 1 },
             });
           }
 
@@ -145,21 +138,13 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
             );
           }
 
-          // 6. Cursor idles & drifts to edge
+          // 6. Cursor rejoins the swarm around the visitor's mouse
           if (cursorRef.current) {
-            addCursorIdleDrift(
-              tl,
-              cursorRef.current,
-              1, // right edge
-              2,
-              containerW,
-              containerH,
-              1.0,
-              headerEl
-            );
+            addSwarmReturn(tl, tl, 1.0);
           }
 
           tl.eventCallback('onComplete', () => {
+            swarm.handBack(tl);
             gsap.set([brandRef.current, navRef.current, actionsRef.current].filter(Boolean), {
               autoAlpha: 1,
               visibility: 'visible',
@@ -176,9 +161,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
 
     return () => {
       isCancelled = true;
-      if (cursorRef.current) {
-        detachCursorFromUserFollow(cursorRef.current);
-      }
+      swarm.handBackByCursorEls([cursorRef.current]);
       ctx.revert();
     };
   }, [buildKey, prefersReducedMotion, isMobile]);
@@ -186,7 +169,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
   return (
     <header 
       ref={headerRef} 
-      className="sticky top-0 z-40 backdrop-blur-md bg-black/85 border-b border-kiwi-border px-6 py-3.5 relative overflow-hidden"
+      className="sticky top-0 z-40 backdrop-blur-md bg-black/85 border-b border-kiwi-border px-6 py-3.5 relative"
     >
       {/* Selection Box & Cursor for Header Intro */}
       <SelectionBox ref={boxRef} label="Canvas Header" />

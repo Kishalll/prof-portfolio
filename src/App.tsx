@@ -7,6 +7,7 @@ import { ProjectsCanvas } from './components/projects/ProjectsCanvas';
 import { SkillsCanvas } from './components/skills/SkillsCanvas';
 import { ContactCanvas } from './components/contact/ContactCanvas';
 import { VisitorCursor } from './components/canvas/VisitorCursor';
+import { SwarmLayer } from './components/canvas/SwarmLayer';
 import { ChoreographerProvider, useChoreographer } from './animation/ChoreographerContext';
 
 function PortfolioAppContent() {
@@ -18,6 +19,9 @@ function PortfolioAppContent() {
     <div className="relative min-h-screen bg-black text-white font-sans selection:bg-kiwi selection:text-black">
       {/* Interactive Visitor Mouse Follower (Isolated from autonomous agents) */}
       <VisitorCursor />
+
+      {/* Global flock of agent arrows: hovers around the visitor's mouse, leaves to build, returns */}
+      <SwarmLayer />
 
       {/* Background Dot-Matrix Canvas Grid (Toggleable) */}
       {isGridVisible && (

@@ -2,8 +2,6 @@ import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { 
   ArrowUpRight, 
   Github, 
-  Terminal, 
-  Cpu, 
   CheckCircle2 
 } from 'lucide-react';
 import { gsap, ScrollTrigger, waitForFontsAndLayout } from '../../animation/motionUtils';
@@ -23,7 +21,6 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
   const { isMobile, prefersReducedMotion, rebuildOnReentry } = useChoreographer();
 
   // Leaf Target Element Refs
-  const badgesRowRef = useRef<HTMLDivElement>(null);
   const headlineRef = useRef<HTMLHeadingElement>(null);
   const bioRef = useRef<HTMLParagraphElement>(null);
   const ctaRowRef = useRef<HTMLDivElement>(null);
@@ -54,7 +51,6 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
     const ctx = gsap.context(() => {
       gsap.set(
         [
-          badgesRowRef.current,
           headlineRef.current,
           bioRef.current,
           ctaRowRef.current,
@@ -85,7 +81,6 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
         if (isCancelled || !container) return;
 
         const leafTargets = [
-          badgesRowRef.current,
           headlineRef.current,
           bioRef.current,
           ctaRowRef.current,
@@ -117,25 +112,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
             });
           }
 
-          // 1. Target 1: Badges Row
-          if (badgesRowRef.current) {
-            const agent = assign({ target: badgesRowRef.current, label: 'Select Badges' });
-            const tl = gsap.timeline({ paused: true });
-            const { reset } = buildBlock(tl, {
-              containerEl: container,
-              targetEl: badgesRowRef.current,
-              agent,
-              agentIndex: 0,
-              totalAgents: 5,
-              isMobile,
-            });
-            createTargetTrigger(badgesRowRef.current, tl, reset, {
-              rebuildOnReentry,
-              staggerDelay: 0.0,
-            });
-          }
-
-          // 2. Target 2: Headline (SplitText character-by-character typing with hugging box & 0.35 scale-up)
+          // 1. Target: Headline (SplitText character-by-character typing with hugging box & 0.35 scale-up)
           if (headlineRef.current) {
             const agent = assign({ target: headlineRef.current, label: 'Type Headline', isHeadline: true, isIBeam: true });
             const tl = gsap.timeline({ paused: true });
@@ -143,8 +120,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
               containerEl: container,
               targetEl: headlineRef.current,
               agent,
-              agentIndex: 1,
-              totalAgents: 5,
+              agentIndex: 0,
               isHeadline: true,
               isMobile,
             });
@@ -154,7 +130,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
             });
           }
 
-          // 3. Target 3: Bio Paragraph (SplitText character-by-character typing with hugging box)
+          // 2. Target: Bio Paragraph (SplitText character-by-character typing with hugging box)
           if (bioRef.current) {
             const agent = assign({ target: bioRef.current, label: 'Format Bio', isParagraph: true, isIBeam: true });
             const tl = gsap.timeline({ paused: true });
@@ -162,8 +138,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
               containerEl: container,
               targetEl: bioRef.current,
               agent,
-              agentIndex: 2,
-              totalAgents: 5,
+              agentIndex: 1,
               isParagraph: true,
               isMobile,
             });
@@ -173,7 +148,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
             });
           }
 
-          // 4. Target 4: CTA Button Row
+          // 3. Target: CTA Button Row
           if (ctaRowRef.current) {
             const agent = assign({ target: ctaRowRef.current, label: 'Resize CTAs' });
             const tl = gsap.timeline({ paused: true });
@@ -181,8 +156,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
               containerEl: container,
               targetEl: ctaRowRef.current,
               agent,
-              agentIndex: 3,
-              totalAgents: 5,
+              agentIndex: 2,
               isMobile,
             });
             createTargetTrigger(ctaRowRef.current, tl, reset, {
@@ -191,7 +165,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
             });
           }
 
-          // 5. Target 5: Spec Telemetry Block + ScrambleText
+          // 4. Target: Spec Telemetry Block + ScrambleText
           if (specBlockRef.current) {
             const agent = assign({ target: specBlockRef.current, label: 'Scramble Stats' });
             const tl = gsap.timeline({ paused: true });
@@ -199,8 +173,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
               containerEl: container,
               targetEl: specBlockRef.current,
               agent,
-              agentIndex: 4,
-              totalAgents: 5,
+              agentIndex: 3,
               isMobile,
             });
 
@@ -278,33 +251,6 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
       {/* 4. MAIN CONTENT DOM (Kept in layout; measured then revealed) */}
       <div className="flex flex-col gap-8 relative z-10">
         
-        {/* ROW 1: BADGES (Leaf target) */}
-        <div ref={badgesRowRef} style={initialStyle} className="flex flex-wrap items-center gap-3 text-xs font-mono min-h-[36px]">
-          {/* Badge 1: VIT Chennai */}
-          <div className="relative inline-flex">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-black border border-kiwi/50 text-kiwi font-medium shadow-sm">
-              <span className="w-1.5 h-1.5 rounded-full bg-kiwi animate-pulse" />
-              VIT Chennai &bull; Computer Science
-            </span>
-          </div>
-
-          {/* Badge 2: Systems & Deployment */}
-          <div className="relative inline-flex">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-black border border-kiwi-yellow/50 text-kiwi-yellow font-medium shadow-sm">
-              <Terminal size={13} />
-              Systems &bull; Nginx &amp; Caddy
-            </span>
-          </div>
-
-          {/* Badge 3: Applied AI/ML */}
-          <div className="relative inline-flex">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-black border border-kiwi-chartreuse/50 text-kiwi-chartreuse font-medium shadow-sm">
-              <Cpu size={13} />
-              Applied AI &bull; AI-Trains-AI
-            </span>
-          </div>
-        </div>
-
         {/* ROW 2: HEADLINE & BIO */}
         <div className="space-y-4 max-w-3xl min-h-[140px]">
           <div>

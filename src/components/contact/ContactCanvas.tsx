@@ -7,8 +7,7 @@ import {
   Send, 
   Copy, 
   Check, 
-  ArrowUpRight,
-  MessageSquareCode
+  ArrowUpRight
 } from 'lucide-react';
 import { gsap, ScrollTrigger, waitForFontsAndLayout } from '../../animation/motionUtils';
 import { buildText, buildBlock, createTargetTrigger } from '../../animation/builders';
@@ -25,7 +24,6 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
   const { isMobile, prefersReducedMotion, rebuildOnReentry } = useChoreographer();
 
   // Header Elements
-  const headerBadgeRef = useRef<HTMLDivElement>(null);
   const headerTitleRef = useRef<HTMLHeadingElement>(null);
   const headerDescRef = useRef<HTMLParagraphElement>(null);
 
@@ -51,7 +49,6 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
     const ctx = gsap.context(() => {
       gsap.set(
         [
-          headerBadgeRef.current,
           headerTitleRef.current,
           headerDescRef.current,
           leftColRef.current,
@@ -90,7 +87,6 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
         if (isCancelled || !container) return;
 
         const allContentElements = [
-          headerBadgeRef.current,
           headerTitleRef.current,
           headerDescRef.current,
           leftColRef.current,
@@ -122,25 +118,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
             });
           }
 
-          // 1. Target: Header Badge
-          if (headerBadgeRef.current) {
-            const agent = assign({ target: headerBadgeRef.current, label: 'Select Badge' });
-            const tl = gsap.timeline({ paused: true });
-            const { reset } = buildBlock(tl, {
-              containerEl: container,
-              targetEl: headerBadgeRef.current,
-              agent,
-              agentIndex: 0,
-              totalAgents: 6,
-              isMobile,
-            });
-            createTargetTrigger(headerBadgeRef.current, tl, reset, {
-              rebuildOnReentry,
-              staggerDelay: 0.0,
-            });
-          }
-
-          // 2. Target: Header Title (SplitText typing)
+          // 1. Target: Header Title (SplitText typing)
           if (headerTitleRef.current) {
             const agent = assign({ target: headerTitleRef.current, label: 'Type Contact Title', isHeadline: true, isIBeam: true });
             const tl = gsap.timeline({ paused: true });
@@ -149,7 +127,6 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
               targetEl: headerTitleRef.current,
               agent,
               agentIndex: 1,
-              totalAgents: 6,
               isHeadline: true,
               isMobile,
             });
@@ -168,7 +145,6 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
               targetEl: headerDescRef.current,
               agent,
               agentIndex: 2,
-              totalAgents: 6,
               isParagraph: true,
               isMobile,
             });
@@ -187,7 +163,6 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
               targetEl: leftColRef.current,
               agent,
               agentIndex: 3,
-              totalAgents: 6,
               isMobile,
             });
 
@@ -261,7 +236,6 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
               targetEl: composerCardRef.current,
               agent,
               agentIndex: 4,
-              totalAgents: 6,
               isMobile,
             });
             createTargetTrigger(composerCardRef.current, tl, reset, {
@@ -325,11 +299,6 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
         
         {/* SECTION HEADER */}
         <div className="space-y-3 max-w-3xl min-h-[100px]">
-          <div ref={headerBadgeRef} style={initialStyle} className="inline-flex items-center gap-2 text-xs font-mono text-kiwi">
-            <MessageSquareCode size={14} />
-            <span>Get in Touch &bull; Contact</span>
-          </div>
-
           <h2 
             ref={headerTitleRef}
             style={initialStyle}

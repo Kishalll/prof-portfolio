@@ -3,8 +3,7 @@ import {
   Terminal, 
   Brain, 
   Server, 
-  Layout, 
-  Layers
+  Layout
 } from 'lucide-react';
 import { gsap, ScrollTrigger, waitForFontsAndLayout } from '../../animation/motionUtils';
 import { buildText, buildBlock, createTargetTrigger } from '../../animation/builders';
@@ -24,7 +23,6 @@ interface SkillTrayData {
   skills: string[];
   icon: React.ElementType;
   color: string;
-  personaIndex: number;
   actionLabel: string;
 }
 
@@ -37,7 +35,6 @@ const SKILL_TRAYS: SkillTrayData[] = [
     skills: ['Linux / Bash', 'Python', 'C++', 'TypeScript', 'JavaScript', 'SQL', 'Git & GitHub'],
     icon: Terminal,
     color: '#DFFF00',
-    personaIndex: 5, // Kernel
     actionLabel: 'Inspect Kernel & Shell',
   },
   {
@@ -48,7 +45,6 @@ const SKILL_TRAYS: SkillTrayData[] = [
     skills: ['PyTorch', 'LoRA / PEFT', 'Ollama', 'ChromaDB', 'FAISS RAG', 'NVIDIA NIM', 'FastAPI', 'Hugging Face'],
     icon: Brain,
     color: '#CCFF00',
-    personaIndex: 4, // AI_Agent
     actionLabel: 'Deploy Model Pipeline',
   },
   {
@@ -59,7 +55,6 @@ const SKILL_TRAYS: SkillTrayData[] = [
     skills: ['Nginx', 'Caddy', 'Docker', 'Linux Server', 'Cloudflare Workers & D1', 'SQLite', 'AWS', 'REST APIs', 'Server-Sent Events (SSE)'],
     icon: Server,
     color: '#FFFF00',
-    personaIndex: 2, // SecOps
     actionLabel: 'Verify Deployment',
   },
   {
@@ -70,7 +65,6 @@ const SKILL_TRAYS: SkillTrayData[] = [
     skills: ['React.js', 'React Native', 'Next.js', 'Vite', 'Expo', 'Tailwind CSS', 'Redux Toolkit', 'Framer Motion'],
     icon: Layout,
     color: '#CCFF00',
-    personaIndex: 1, // UI_Design
     actionLabel: 'Render Client Tree',
   },
 ];
@@ -80,8 +74,6 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
   const { isMobile, prefersReducedMotion, rebuildOnReentry } = useChoreographer();
 
   // Header Elements
-  const headerBadgeRef = useRef<HTMLDivElement>(null);
-  const headerBadgeTextRef = useRef<HTMLSpanElement>(null);
   const headerTitleRef = useRef<HTMLHeadingElement>(null);
   const headerDescRef = useRef<HTMLParagraphElement>(null);
 
@@ -113,7 +105,6 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
     const ctx = gsap.context(() => {
       gsap.set(
         [
-          headerBadgeRef.current,
           headerTitleRef.current,
           headerDescRef.current,
           ...trayRefs.map((r) => r.current),
@@ -141,7 +132,6 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
         if (isCancelled || !container) return;
 
         const allContentElements = [
-          headerBadgeRef.current,
           headerTitleRef.current,
           headerDescRef.current,
           ...trayRefs.map((r) => r.current),
@@ -172,49 +162,7 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
             });
           }
 
-          // 1. Target: Header Badge
-          if (headerBadgeRef.current) {
-            const agent = assign({ target: headerBadgeRef.current, label: 'Select Badge' });
-            const tl = gsap.timeline({ paused: true });
-            const { reset } = buildBlock(tl, {
-              containerEl: container,
-              targetEl: headerBadgeRef.current,
-              agent,
-              agentIndex: 0,
-              totalAgents: 8,
-              isMobile,
-            });
-
-            if (headerBadgeTextRef.current) {
-              tl.to(
-                headerBadgeTextRef.current,
-                {
-                  scrambleText: {
-                    text: 'Skills & Technologies • Tech Stack',
-                    chars: '0123456789ABCDEF!<>-_/[]{}',
-                    speed: 0.5,
-                  },
-                  duration: 0.75,
-                  ease: 'none',
-                },
-                '-=0.2'
-              );
-            }
-
-            const fullReset = () => {
-              reset();
-              if (headerBadgeTextRef.current) {
-                headerBadgeTextRef.current.textContent = 'Skills & Technologies • Tech Stack';
-              }
-            };
-
-            createTargetTrigger(headerBadgeRef.current, tl, fullReset, {
-              rebuildOnReentry,
-              staggerDelay: 0.0,
-            });
-          }
-
-          // 2. Target: Header Title (SplitText typing)
+          // 1. Target: Header Title (SplitText typing)
           if (headerTitleRef.current) {
             const agent = assign({ target: headerTitleRef.current, label: 'Type Skills Title', isHeadline: true, isIBeam: true });
             const tl = gsap.timeline({ paused: true });
@@ -223,7 +171,6 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
               targetEl: headerTitleRef.current,
               agent,
               agentIndex: 1,
-              totalAgents: 8,
               isHeadline: true,
               isMobile,
             });
@@ -242,7 +189,6 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
               targetEl: headerDescRef.current,
               agent,
               agentIndex: 2,
-              totalAgents: 8,
               isParagraph: true,
               isMobile,
             });
@@ -264,7 +210,6 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
               targetEl: trayEl,
               agent,
               agentIndex: 3 + idx,
-              totalAgents: 8,
               isMobile,
             });
 
@@ -330,11 +275,6 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
         
         {/* SECTION HEADER */}
         <div className="space-y-3 max-w-3xl min-h-[100px]">
-          <div ref={headerBadgeRef} style={initialStyle} className="inline-flex items-center gap-2 text-xs font-mono text-kiwi">
-            <Layers size={14} />
-            <span ref={headerBadgeTextRef}>Skills &amp; Technologies &bull; Tech Stack</span>
-          </div>
-
           <h2 
             ref={headerTitleRef}
             style={initialStyle}

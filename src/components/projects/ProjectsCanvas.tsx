@@ -32,7 +32,6 @@ interface ProjectData {
   icon: React.ElementType;
   span?: string;
   accentColor: string;
-  personaIndex: number;
   actionLabel: string;
 }
 
@@ -48,7 +47,6 @@ const PROJECTS_DATA: ProjectData[] = [
     icon: Bot,
     span: 'col-span-1',
     accentColor: '#CCFF00',
-    personaIndex: 4, // AI_Agent
     actionLabel: 'Train AI Weights',
   },
   {
@@ -62,7 +60,6 @@ const PROJECTS_DATA: ProjectData[] = [
     icon: Terminal,
     span: 'col-span-1',
     accentColor: '#DFFF00',
-    personaIndex: 5, // Kernel
     actionLabel: 'Assemble CLI Agent',
   },
   {
@@ -76,7 +73,6 @@ const PROJECTS_DATA: ProjectData[] = [
     icon: ShieldCheck,
     span: 'col-span-1',
     accentColor: '#FFFF00',
-    personaIndex: 2, // SecOps
     actionLabel: 'Verify Threat Model',
   },
   {
@@ -90,7 +86,6 @@ const PROJECTS_DATA: ProjectData[] = [
     icon: Cpu,
     span: 'col-span-1',
     accentColor: '#DFFF00',
-    personaIndex: 4, // AI_Agent
     actionLabel: 'Mount Vector RAG',
   },
   {
@@ -104,7 +99,6 @@ const PROJECTS_DATA: ProjectData[] = [
     icon: Gamepad2,
     span: 'col-span-1',
     accentColor: '#CCFF00',
-    personaIndex: 1, // UI_Design
     actionLabel: 'Build Arena Layout',
   },
   {
@@ -119,7 +113,6 @@ const PROJECTS_DATA: ProjectData[] = [
     icon: Chrome,
     span: 'col-span-1',
     accentColor: '#FFFFFF',
-    personaIndex: 6, // Reviewer
     actionLabel: 'Mount Proxy Engine',
   },
 ];
@@ -234,7 +227,6 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
               targetEl: headerBadgeRef.current,
               agent,
               agentIndex: 0,
-              totalAgents: 8,
               isMobile,
             });
 
@@ -276,7 +268,6 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
               targetEl: headerTitleRef.current,
               agent,
               agentIndex: 1,
-              totalAgents: 8,
               isHeadline: true,
               isMobile,
             });
@@ -295,7 +286,6 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
               targetEl: headerDescRef.current,
               agent,
               agentIndex: 2,
-              totalAgents: 8,
               isParagraph: true,
               isMobile,
             });
@@ -317,7 +307,6 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
               targetEl: cardEl,
               agent,
               agentIndex: 3 + (idx % 5),
-              totalAgents: 8,
               isMobile,
             });
 

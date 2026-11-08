@@ -3,7 +3,6 @@ import {
   Terminal, 
   Layers, 
   Cpu, 
-  BookOpen, 
   MessageSquare 
 } from 'lucide-react';
 import { gsap, ScrollTrigger, waitForFontsAndLayout } from '../../animation/motionUtils';
@@ -24,7 +23,6 @@ const PILLARS_DATA = [
     description: 'Reverse proxy routing (Nginx, Caddy), SSL/TLS orchestration, Docker containerization, and production Linux server deployment workflows.',
     icon: Terminal,
     color: '#DFFF00',
-    personaIndex: 5, // Kernel
     actionLabel: 'Configure Deployment',
   },
   {
@@ -34,7 +32,6 @@ const PILLARS_DATA = [
     description: 'End-to-end AI pipelines: synthetic data generation, LoRA fine-tuning (PyTorch/PEFT), local LLM inference (Ollama), ChromaDB/FAISS RAG, and multi-layer guardrails.',
     icon: Cpu,
     color: '#CCFF00',
-    personaIndex: 4, // AI_Agent
     actionLabel: 'Deploy AI Pipeline',
   },
   {
@@ -44,7 +41,6 @@ const PILLARS_DATA = [
     description: 'Responsive web and mobile applications with real-time streaming (SSE/WebSockets), scam/phishing detection, session management, and clean user experience.',
     icon: Layers,
     color: '#FFFF00',
-    personaIndex: 1, // UI_Design
     actionLabel: 'Build Full-Stack UX',
   },
 ];
@@ -54,7 +50,6 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
   const { isMobile, prefersReducedMotion, rebuildOnReentry } = useChoreographer();
 
   // Content Element Refs
-  const headerBadgeRef = useRef<HTMLDivElement>(null);
   const headerTitleRef = useRef<HTMLHeadingElement>(null);
   const headerDescRef = useRef<HTMLDivElement>(null);
   const pillarRefs = [useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null)];
@@ -80,7 +75,6 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
     const ctx = gsap.context(() => {
       gsap.set(
         [
-          headerBadgeRef.current,
           headerTitleRef.current,
           headerDescRef.current,
           ...pillarRefs.map((r) => r.current),
@@ -110,7 +104,6 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
         if (isCancelled || !container) return;
 
         const allContentElements = [
-          headerBadgeRef.current,
           headerTitleRef.current,
           headerDescRef.current,
           ...pillarRefs.map((r) => r.current),
@@ -142,25 +135,7 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
             });
           }
 
-          // 1. Target: Header Badge
-          if (headerBadgeRef.current) {
-            const agent = assign({ target: headerBadgeRef.current, label: 'Select Badge' });
-            const tl = gsap.timeline({ paused: true });
-            const { reset } = buildBlock(tl, {
-              containerEl: container,
-              targetEl: headerBadgeRef.current,
-              agent,
-              agentIndex: 0,
-              totalAgents: 8,
-              isMobile,
-            });
-            createTargetTrigger(headerBadgeRef.current, tl, reset, {
-              rebuildOnReentry,
-              staggerDelay: 0.0,
-            });
-          }
-
-          // 2. Target: Header Title (SplitText typing)
+          // 1. Target: Header Title (SplitText typing)
           if (headerTitleRef.current) {
             const agent = assign({ target: headerTitleRef.current, label: 'Type Spec Title', isHeadline: true, isIBeam: true });
             const tl = gsap.timeline({ paused: true });
@@ -169,7 +144,6 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
               targetEl: headerTitleRef.current,
               agent,
               agentIndex: 1,
-              totalAgents: 8,
               isHeadline: true,
               isMobile,
             });
@@ -188,7 +162,6 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
               targetEl: headerDescRef.current,
               agent,
               agentIndex: 2,
-              totalAgents: 8,
               isParagraph: true,
               isMobile,
             });
@@ -209,7 +182,6 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
               targetEl: el,
               agent,
               agentIndex: 3 + idx,
-              totalAgents: 8,
               isMobile,
             });
 
@@ -251,7 +223,6 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
               targetEl: pinEl,
               agent,
               agentIndex: 6 + pIdx,
-              totalAgents: 8,
               isMobile,
             });
             createTargetTrigger(pinEl, tl, reset, {
@@ -297,11 +268,6 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
         
         {/* HEADER & BIO SUMMARY */}
         <div className="space-y-3 max-w-3xl min-h-[140px]">
-          <div ref={headerBadgeRef} style={initialStyle} className="inline-flex items-center gap-2 text-xs font-mono text-kiwi">
-            <BookOpen size={14} />
-            <span>About Me &bull; VIT Chennai</span>
-          </div>
-
           <h2 
             ref={headerTitleRef}
             style={initialStyle}

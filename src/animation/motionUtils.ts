@@ -3,7 +3,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ScrambleTextPlugin } from 'gsap/ScrambleTextPlugin';
 import { SplitText } from 'gsap/SplitText';
 import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
-import { getMousePos } from './mouseTracker';
+import { swarm } from './swarm';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger, ScrambleTextPlugin, SplitText, MotionPathPlugin);
@@ -91,35 +91,17 @@ export function getVisibleViewportSpawn(containerEl: HTMLElement): { x: number; 
 }
 
 /**
- * Generates an entry point from a random viewport/container edge (outside visible frame)
+ * Describes a cursor that leaves the global swarm to start this leg of the build.
+ * The swarm agent that leaves is the one nearest to `index` in the flock; the section-level
+ * cursor takes over at the exact on-screen position where that agent was hovering.
  */
-export function getRandomEdgePosition(containerWidth: number, containerHeight: number) {
-  const edges = ['top', 'bottom', 'left', 'right'] as const;
-  const edge = edges[Math.floor(Math.random() * edges.length)];
-  const pad = 80;
-
-  switch (edge) {
-    case 'top':
-      return {
-        x: Math.random() * containerWidth,
-        y: -pad - Math.random() * 60,
-      };
-    case 'bottom':
-      return {
-        x: Math.random() * containerWidth,
-        y: containerHeight + pad + Math.random() * 60,
-      };
-    case 'left':
-      return {
-        x: -pad - Math.random() * 80,
-        y: Math.random() * containerHeight,
-      };
-    case 'right':
-      return {
-        x: containerWidth + pad + Math.random() * 80,
-        y: Math.random() * containerHeight,
-      };
-  }
+export interface SwarmDeparture {
+  /** Unique key for the departure (the build timeline) so the agent can be handed back later. */
+  owner: object;
+  /** Section container the cursor element is absolutely positioned in. */
+  containerEl: HTMLElement;
+  /** Preferred swarm agent index (decides which persona leaves the flock). */
+  index: number;
 }
 
 /**
@@ -127,6 +109,10 @@ export function getRandomEdgePosition(containerWidth: number, containerHeight: n
  * control point offset perpendicular to the line (random sign, magnitude 60-160px)
  * with ease back.out(1.2) for slight overshoot and settle.
  * Tilts slightly toward the travel direction during motion and settles to 0.
+ *
+ * When `options.depart` is given, the leg does not start from the static `start` point.
+ * Instead, at the moment the leg begins, one swarm agent leaves the flock and the leg starts
+ * from exactly where that agent is hovering on screen (re-planned every run).
  */
 export function addCurvedCursorTravel(
   tl: gsap.core.Timeline,
@@ -137,43 +123,55 @@ export function addCurvedCursorTravel(
     duration?: number;
     position?: number | string;
     ease?: string;
+    depart?: SwarmDeparture;
   } = {}
 ) {
   const duration = options.duration ?? 0.75;
   const ease = options.ease ?? 'back.out(1.2)';
   const position = options.position ?? '+=0';
+  const depart = options.depart;
 
-  const dx = target.x - start.x;
-  const dy = target.y - start.y;
-  const dist = Math.hypot(dx, dy) || 1;
+  // Mutable plan: recomputed at the start of every run (the departure point depends on the swarm)
+  let s = { x: start.x, y: start.y };
+  let cx = 0;
+  let cy = 0;
+  let bankAngle = 0;
 
-  // Perpendicular normal (-dy, dx)
-  const nx = -dy / dist;
-  const ny = dx / dist;
+  const plan = () => {
+    const dx = target.x - s.x;
+    const dy = target.y - s.y;
+    const dist = Math.hypot(dx, dy) || 1;
 
-  // Random sign (+1 or -1) and perpendicular magnitude (60 to 160 px)
-  const sign = Math.random() > 0.5 ? 1 : -1;
-  const mag = 60 + Math.random() * 100;
-  const cx = (start.x + target.x) / 2 + nx * sign * mag;
-  const cy = (start.y + target.y) / 2 + ny * sign * mag;
+    // Perpendicular normal (-dy, dx)
+    const nx = -dy / dist;
+    const ny = dx / dist;
 
-  // Angle of overall travel for banking
-  const travelAngle = Math.atan2(dy, dx) * (180 / Math.PI);
-  // Bank angle clamped to [-16, 16] deg
-  const bankAngle = Math.max(-16, Math.min(16, (travelAngle - 45) * 0.25));
+    // Random sign (+1 or -1) and perpendicular magnitude (60 to 160 px)
+    const sign = Math.random() > 0.5 ? 1 : -1;
+    const mag = 60 + Math.random() * 100;
+    cx = (s.x + target.x) / 2 + nx * sign * mag;
+    cy = (s.y + target.y) / 2 + ny * sign * mag;
+
+    // Angle of overall travel for banking, clamped to [-16, 16] deg
+    const travelAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+    bankAngle = Math.max(-16, Math.min(16, (travelAngle - 45) * 0.25));
+  };
+  plan();
 
   const proxy = { t: 0 };
 
-  // Set initial position inside the timeline so it resets cleanly on every restart (prevent premature render before trigger)
-  tl.set(
-    cursorEl,
-    {
-      x: start.x,
-      y: start.y,
-      rotation: 0,
-      autoAlpha: 1,
-      immediateRender: false,
+  // Runs when this leg begins (never at setup time, so nothing is shown before its trigger):
+  // leave the swarm if departing, then place the cursor at the start of the path.
+  tl.call(
+    () => {
+      if (depart) {
+        const p = swarm.dispatch(depart.owner, cursorEl, depart.containerEl, depart.index);
+        s = { x: p.x, y: p.y };
+        plan();
+      }
+      gsap.set(cursorEl, { x: s.x, y: s.y, rotation: 0, autoAlpha: 1 });
     },
+    undefined,
     position
   );
 
@@ -184,12 +182,14 @@ export function addCurvedCursorTravel(
       t: 1,
       duration,
       ease,
+      // fromTo renders immediately by default, which would show the cursor at page load
+      immediateRender: false,
       onUpdate: () => {
         const t = proxy.t;
         const inv = 1 - t;
         // Quadratic bezier formula B(t) = (1-t)^2 P0 + 2(1-t)t P1 + t^2 P2
-        const x = inv * inv * start.x + 2 * inv * t * cx + t * t * target.x;
-        const y = inv * inv * start.y + 2 * inv * t * cy + t * t * target.y;
+        const x = inv * inv * s.x + 2 * inv * t * cx + t * t * target.x;
+        const y = inv * inv * s.y + 2 * inv * t * cy + t * t * target.y;
         // Bank cursor mid-flight, settle to 0 near end
         const rotation = bankAngle * Math.sin(Math.max(0, Math.min(1, t)) * Math.PI);
 
@@ -370,217 +370,15 @@ export function addSelectionBoxBuild(
 }
 
 /**
- * Calculates a deterministic idle parking position in a 24px margin
- * along the left or right edges of the section, spaced to prevent overlapping content.
+ * The section-level cursor has finished its build: hand it back to the swarm.
+ * The swarm agent re-appears where the cursor currently is and flies back to the cluster
+ * around the visitor's mouse (curved path with a speed-dependent trail).
+ * Safe to call more than once for the same owner.
  */
-export function getDeterministicIdlePosition(
-  index: number,
-  total: number,
-  containerW: number,
-  containerH: number
-): { x: number; y: number } {
-  const isLeft = index % 2 === 0;
-  const x = isLeft ? 24 : Math.max(containerW - 80, 24);
-
-  const topPad = 80;
-  const bottomPad = 80;
-  const availableH = Math.max(120, containerH - topPad - bottomPad);
-
-  const countOnSide = isLeft ? Math.ceil(total / 2) : Math.floor(total / 2);
-  const sideIndex = Math.floor(index / 2);
-  const step = countOnSide > 1 ? availableH / (countOnSide - 1) : availableH * 0.5;
-
-  const y = topPad + (isLeft ? 0 : 25) + sideIndex * step;
-
-  return { x, y };
-}
-
-interface ActiveFollower {
-  cursorEl: HTMLElement;
-  containerEl: HTMLElement;
-  dx: number;
-  dy: number;
-  easeFactor: number;
-  currentX: number;
-  currentY: number;
-  isSettled: boolean;
-}
-
-const activeFollowers = new Map<HTMLElement, ActiveFollower>();
-let isTickerActive = false;
-
-function onFollowerTick() {
-  if (activeFollowers.size === 0) {
-    if (isTickerActive) {
-      gsap.ticker.remove(onFollowerTick);
-      isTickerActive = false;
-    }
-    return;
-  }
-
-  const mouse = getMousePos();
-
-  activeFollowers.forEach((follower) => {
-    // If element or container is no longer connected to DOM, cleanup
-    if (!follower.cursorEl.parentNode || !follower.containerEl.parentNode) {
-      activeFollowers.delete(follower.cursorEl);
-      return;
-    }
-
-    const cRect = follower.containerEl.getBoundingClientRect();
-    const isSectionVisible = cRect.bottom > 0 && cRect.top < window.innerHeight;
-
-    if (!isSectionVisible) {
-      // Section is off-screen: hide cursor so it never bleeds or gets stuck across sections
-      gsap.set(follower.cursorEl, { autoAlpha: 0 });
-      return;
-    }
-
-    const targetX = mouse.clientX - cRect.left + follower.dx;
-    const targetY = mouse.clientY - cRect.top + follower.dy;
-
-    const diffX = targetX - follower.currentX;
-    const diffY = targetY - follower.currentY;
-    const dist = Math.hypot(diffX, diffY);
-
-    if (dist > 0.5) {
-      follower.isSettled = false;
-      follower.currentX += diffX * follower.easeFactor;
-      follower.currentY += diffY * follower.easeFactor;
-      gsap.set(follower.cursorEl, {
-        x: follower.currentX,
-        y: follower.currentY,
-        rotation: 0,
-        autoAlpha: 0.95,
-        force3D: true,
-      });
-    } else if (!follower.isSettled) {
-      // Reached exact target: stay completely still right there
-      follower.isSettled = true;
-      follower.currentX = targetX;
-      follower.currentY = targetY;
-      gsap.set(follower.cursorEl, {
-        x: targetX,
-        y: targetY,
-        rotation: 0,
-        autoAlpha: 0.95,
-        force3D: true,
-      });
-    }
-  });
-}
-
-/**
- * Calculates a unique follower cluster offset around the visitor cursor.
- * Spreads cursors in a comfortable arc around the pointer with no overlapping.
- */
-export function getFollowerOffset(index: number, total: number): { dx: number; dy: number } {
-  const count = Math.max(total, 5);
-  // Spread in an arc around the cursor pointer (from 30deg to 300deg)
-  const angle = 0.5 + (index / count) * 1.7 * Math.PI;
-  const radius = 34 + (index % 3) * 14;
-  const dx = Math.cos(angle) * radius;
-  const dy = Math.sin(angle) * radius + 18;
-  return { dx, dy };
-}
-
-/**
- * Attaches an autonomous cursor to follow the user's cursor once its build completes.
- * Transitions smoothly to the user's cursor, follows while moving, and stays strictly stationary
- * when motionless or off-screen.
- */
-export function attachCursorToUserFollow(
-  cursorEl: HTMLElement,
-  containerEl: HTMLElement,
-  index: number,
-  total: number
-) {
-  // Kill any existing conflicting tweens
-  gsap.killTweensOf(cursorEl);
-
-  const { dx, dy } = getFollowerOffset(index, total);
-  const mouse = getMousePos();
-  const cRect = containerEl.getBoundingClientRect();
-  const targetX = mouse.clientX - cRect.left + dx;
-  const targetY = mouse.clientY - cRect.top + dy;
-
-  // Read current position of cursor in container
-  const curX = Number(gsap.getProperty(cursorEl, 'x')) || targetX;
-  const curY = Number(gsap.getProperty(cursorEl, 'y')) || targetY;
-
-  // Staggered ease factor for natural follow latency (first follower follows briskly, later ones trail slightly)
-  const easeFactor = Math.max(0.08, 0.16 - (index % 4) * 0.02);
-
-  const follower: ActiveFollower = {
-    cursorEl,
-    containerEl,
-    dx,
-    dy,
-    easeFactor,
-    currentX: curX,
-    currentY: curY,
-    isSettled: false,
-  };
-
-  activeFollowers.set(cursorEl, follower);
-
-  // Smooth entry flight from element build finish position to user cursor
-  gsap.to(cursorEl, {
-    x: targetX,
-    y: targetY,
-    rotation: 0,
-    autoAlpha: 0.95,
-    duration: 0.65,
-    ease: 'power2.out',
-    onUpdate: () => {
-      follower.currentX = Number(gsap.getProperty(cursorEl, 'x'));
-      follower.currentY = Number(gsap.getProperty(cursorEl, 'y'));
-    },
-    onComplete: () => {
-      follower.isSettled = true;
-    },
-  });
-
-  if (!isTickerActive) {
-    gsap.ticker.add(onFollowerTick);
-    isTickerActive = true;
-  }
-}
-
-/**
- * Detaches an autonomous cursor from following the user's cursor.
- * Called on task reset and before starting a new build task.
- */
-export function detachCursorFromUserFollow(cursorEl: HTMLElement) {
-  activeFollowers.delete(cursorEl);
-  gsap.killTweensOf(cursorEl);
-}
-
-/**
- * Transition cursor to follow user's cursor upon completing build.
- * Stays strictly still when motionless or off-screen.
- */
-export function addCursorIdleDrift(
+export function addSwarmReturn(
   tl: gsap.core.Timeline,
-  cursorEl: HTMLElement,
-  index: number,
-  total: number,
-  _containerW: number,
-  _containerH: number,
-  position: number | string,
-  containerEl?: HTMLElement
+  owner: object,
+  position: number | string
 ) {
-  tl.call(
-    () => {
-      const container = containerEl || cursorEl.closest('section') || (cursorEl.parentElement as HTMLElement);
-      if (container) {
-        attachCursorToUserFollow(cursorEl, container, index, total);
-      }
-    },
-    undefined,
-    position
-  );
+  tl.call(() => swarm.handBack(owner), undefined, position);
 }
-
-
-
