@@ -6,7 +6,6 @@ import {
   Terminal, 
   Gamepad2, 
   Chrome, 
-  FolderGit2,
   ExternalLink,
   Bot
 } from 'lucide-react';
@@ -122,8 +121,6 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
   const { isMobile, prefersReducedMotion, rebuildOnReentry } = useChoreographer();
 
   // Header Elements
-  const headerBadgeRef = useRef<HTMLDivElement>(null);
-  const headerBadgeTextRef = useRef<HTMLSpanElement>(null);
   const headerTitleRef = useRef<HTMLHeadingElement>(null);
   const headerDescRef = useRef<HTMLParagraphElement>(null);
 
@@ -159,7 +156,6 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
     const ctx = gsap.context(() => {
       gsap.set(
         [
-          headerBadgeRef.current,
           headerTitleRef.current,
           headerDescRef.current,
           ...cardRefs.map((r) => r.current),
@@ -187,7 +183,6 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
         if (isCancelled || !container) return;
 
         const allContentElements = [
-          headerBadgeRef.current,
           headerTitleRef.current,
           headerDescRef.current,
           ...cardRefs.map((r) => r.current),
@@ -218,48 +213,7 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
             });
           }
 
-          // 1. Target: Header Badge
-          if (headerBadgeRef.current) {
-            const agent = assign({ target: headerBadgeRef.current, label: 'Select Badge' });
-            const tl = gsap.timeline({ paused: true });
-            const { reset } = buildBlock(tl, {
-              containerEl: container,
-              targetEl: headerBadgeRef.current,
-              agent,
-              agentIndex: 0,
-              isMobile,
-            });
-
-            if (headerBadgeTextRef.current) {
-              tl.to(
-                headerBadgeTextRef.current,
-                {
-                  scrambleText: {
-                    text: 'Selected Works • 2025–2026',
-                    chars: '0123456789ABCDEF!<>-_/[]{}',
-                    speed: 0.5,
-                  },
-                  duration: 0.75,
-                  ease: 'none',
-                },
-                '-=0.2'
-              );
-            }
-
-            const fullReset = () => {
-              reset();
-              if (headerBadgeTextRef.current) {
-                headerBadgeTextRef.current.textContent = 'Selected Works • 2025–2026';
-              }
-            };
-
-            createTargetTrigger(headerBadgeRef.current, tl, fullReset, {
-              rebuildOnReentry,
-              staggerDelay: 0.0,
-            });
-          }
-
-          // 2. Target: Header Title (SplitText typing)
+          // 1. Target: Header Title (SplitText typing)
           if (headerTitleRef.current) {
             const agent = assign({ target: headerTitleRef.current, label: 'Type Title', isHeadline: true, isIBeam: true });
             const tl = gsap.timeline({ paused: true });
@@ -267,7 +221,7 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
               containerEl: container,
               targetEl: headerTitleRef.current,
               agent,
-              agentIndex: 1,
+              agentIndex: 0,
               isHeadline: true,
               isMobile,
             });
@@ -277,7 +231,7 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
             });
           }
 
-          // 3. Target: Header Desc (SplitText typing)
+          // 2. Target: Header Desc (SplitText typing)
           if (headerDescRef.current) {
             const agent = assign({ target: headerDescRef.current, label: 'Format Bio', isParagraph: true, isIBeam: true });
             const tl = gsap.timeline({ paused: true });
@@ -285,7 +239,7 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
               containerEl: container,
               targetEl: headerDescRef.current,
               agent,
-              agentIndex: 2,
+              agentIndex: 1,
               isParagraph: true,
               isMobile,
             });
@@ -295,7 +249,7 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
             });
           }
 
-          // 4. Targets: 5 Project Cards
+          // 3. Targets: 5 Project Cards
           cardRefs.forEach((cRef, idx) => {
             const cardEl = cRef.current;
             if (!cardEl) return;
@@ -306,7 +260,7 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
               containerEl: container,
               targetEl: cardEl,
               agent,
-              agentIndex: 3 + (idx % 5),
+              agentIndex: 2 + (idx % 5),
               isMobile,
             });
 
@@ -372,11 +326,6 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
         
         {/* SECTION HEADER */}
         <div className="space-y-3 max-w-3xl min-h-[100px]">
-          <div ref={headerBadgeRef} style={initialStyle} className="inline-flex items-center gap-2 text-xs font-mono text-kiwi">
-            <FolderGit2 size={14} />
-            <span ref={headerBadgeTextRef}>Selected Works &bull; 2025–2026</span>
-          </div>
-
           <h2 
             ref={headerTitleRef}
             style={initialStyle}

@@ -9,6 +9,7 @@ import { buildText, buildBlock, createTargetTrigger } from '../../animation/buil
 import { useChoreographer } from '../../animation/ChoreographerContext';
 import { useSectionChoreographer, ChoreographerLayer } from '../../animation/CursorChoreographer';
 import { GuideLines } from '../canvas/overlays';
+import { HeroPhoto } from './HeroPhoto';
 
 interface HeroBuilderCanvasProps {
   buildKey?: number;
@@ -25,6 +26,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
   const bioRef = useRef<HTMLParagraphElement>(null);
   const ctaRowRef = useRef<HTMLDivElement>(null);
   const specBlockRef = useRef<HTMLDivElement>(null);
+  const photoRef = useRef<HTMLDivElement>(null);
 
   // Stat Number Scramble Target Refs
   const statNum1Ref = useRef<HTMLSpanElement>(null);
@@ -55,6 +57,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           bioRef.current,
           ctaRowRef.current,
           specBlockRef.current,
+          photoRef.current,
         ].filter(Boolean),
         { autoAlpha: 0 }
       );
@@ -85,6 +88,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           bioRef.current,
           ctaRowRef.current,
           specBlockRef.current,
+          photoRef.current,
         ].filter(Boolean) as HTMLElement[];
 
         // Handle prefers-reduced-motion: reveal all content immediately with zero overlays
@@ -162,6 +166,23 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
             createTargetTrigger(ctaRowRef.current, tl, reset, {
               rebuildOnReentry,
               staggerDelay: 0.22,
+            });
+          }
+
+          // 5. Target: Portrait (top right)
+          if (photoRef.current) {
+            const agent = assign({ target: photoRef.current, label: 'Place Portrait' });
+            const tl = gsap.timeline({ paused: true });
+            const { reset } = buildBlock(tl, {
+              containerEl: container,
+              targetEl: photoRef.current,
+              agent,
+              agentIndex: 4,
+              isMobile,
+            });
+            createTargetTrigger(photoRef.current, tl, reset, {
+              rebuildOnReentry,
+              staggerDelay: 0.1,
             });
           }
 
@@ -251,8 +272,12 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
       {/* 4. MAIN CONTENT DOM (Kept in layout; measured then revealed) */}
       <div className="flex flex-col gap-8 relative z-10">
         
+        {/* PORTRAIT: top right (md+), small above the headline on mobile. Swap the picture in HeroPhoto.tsx */}
+        <div className="relative">
+        <HeroPhoto ref={photoRef} style={initialStyle} />
+
         {/* ROW 2: HEADLINE & BIO */}
-        <div className="space-y-4 max-w-3xl min-h-[140px]">
+        <div className="space-y-4 max-w-3xl md:max-w-none md:w-[calc(100%-250px)] lg:w-[calc(100%-290px)] min-h-[140px]">
           <div>
             <h1 
               ref={headlineRef}
@@ -272,6 +297,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
               </p>
             </div>
           </div>
+        </div>
         </div>
 
         {/* ROW 3: CTAS (Leaf target) */}

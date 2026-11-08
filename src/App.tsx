@@ -8,6 +8,7 @@ import { SkillsCanvas } from './components/skills/SkillsCanvas';
 import { ContactCanvas } from './components/contact/ContactCanvas';
 import { VisitorCursor } from './components/canvas/VisitorCursor';
 import { SwarmLayer } from './components/canvas/SwarmLayer';
+import { WaveBackground } from './components/canvas/WaveBackground';
 import { ChoreographerProvider, useChoreographer } from './animation/ChoreographerContext';
 
 function PortfolioAppContent() {
@@ -30,6 +31,9 @@ function PortfolioAppContent() {
           aria-hidden="true"
         />
       )}
+
+      {/* Animated wave field: drifts, flows with scroll, bends around the cursor */}
+      <WaveBackground />
 
       {/* Subtle Ambient Radial Lighting */}
       <div 
