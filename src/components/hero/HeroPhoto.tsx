@@ -11,7 +11,7 @@ import React, { forwardRef, useState } from 'react';
  *  3. Until the file exists, the placeholder below is shown automatically.
  * ─────────────────────────────────────────────────────────────────────────────
  */
-const PHOTO_SRC = '/profile.jpg';
+const PHOTO_SRC = '/profile.jpeg';
 const PHOTO_ALT = 'Portrait of Kishal P';
 
 const Handle: React.FC<{ className: string }> = ({ className }) => (
