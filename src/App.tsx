@@ -77,7 +77,7 @@ function PortfolioAppContent() {
       {/* FOOTER */}
       <footer className="border-t border-kiwi-border/60 py-8 px-6 text-center text-xs font-mono text-zinc-500 mt-16">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <span>&copy; {new Date().getFullYear()} Kishal P &bull; Built with precision</span>
+          <span>&copy; {new Date().getFullYear()} Kishal P &bull; Built with care &amp; precision</span>
           <div className="flex items-center gap-4">
             <a href="https://github.com/Kishalll" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
             <a href="https://www.linkedin.com/in/kishal-p-0a13842b9/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">LinkedIn</a>

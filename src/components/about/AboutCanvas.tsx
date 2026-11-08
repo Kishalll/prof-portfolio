@@ -1,7 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { 
   Terminal, 
-  ShieldCheck, 
+  Layers, 
   Cpu, 
   BookOpen, 
   MessageSquare 
@@ -18,34 +18,34 @@ interface AboutCanvasProps {
 
 const PILLARS_DATA = [
   {
-    id: 'ai-pillar',
-    number: '01',
-    title: 'Applied AI & RAG',
-    description: 'End-to-end fullstack apps with dense-vector RAG architectures (FAISS, NVIDIA NIM, Ollama) and real-time streaming interfaces.',
-    icon: Cpu,
-    color: '#CCFF00',
-    personaIndex: 4, // AI_Agent
-    actionLabel: 'Deploy RAG Vector',
-  },
-  {
     id: 'linux-pillar',
-    number: '02',
-    title: 'Linux Systems',
-    description: 'Extensive exploration of Wayland/Hyprland dotfiles, Bash automation, Docker containerization, and terminal-first workflows.',
+    number: '01',
+    title: 'Systems & Deployment',
+    description: 'Reverse proxy routing (Nginx, Caddy), SSL/TLS orchestration, Docker containerization, and production Linux server deployment workflows.',
     icon: Terminal,
     color: '#DFFF00',
     personaIndex: 5, // Kernel
-    actionLabel: 'Assemble Wayland CLI',
+    actionLabel: 'Configure Deployment',
   },
   {
-    id: 'sec-pillar',
+    id: 'ai-pillar',
+    number: '02',
+    title: 'Applied AI & Local LLMs',
+    description: 'End-to-end AI pipelines: synthetic data generation, LoRA fine-tuning (PyTorch/PEFT), local LLM inference (Ollama), ChromaDB/FAISS RAG, and multi-layer guardrails.',
+    icon: Cpu,
+    color: '#CCFF00',
+    personaIndex: 4, // AI_Agent
+    actionLabel: 'Deploy AI Pipeline',
+  },
+  {
+    id: 'fullstack-pillar',
     number: '03',
-    title: 'Security & Auth',
-    description: 'Rigorous security implementations: P-256 ECDSA cryptographic verification, DCT watermarking, phishing intelligence, and session diffing.',
-    icon: ShieldCheck,
+    title: 'Full-Stack & Practical Tools',
+    description: 'Responsive web and mobile applications with real-time streaming (SSE/WebSockets), scam/phishing detection, session management, and clean user experience.',
+    icon: Layers,
     color: '#FFFF00',
-    personaIndex: 2, // SecOps
-    actionLabel: 'Assert P-256 Auth',
+    personaIndex: 1, // UI_Design
+    actionLabel: 'Build Full-Stack UX',
   },
 ];
 
@@ -299,7 +299,7 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
         <div className="space-y-3 max-w-3xl min-h-[140px]">
           <div ref={headerBadgeRef} style={initialStyle} className="inline-flex items-center gap-2 text-xs font-mono text-kiwi">
             <BookOpen size={14} />
-            <span>Engineering Background &bull; VIT Chennai</span>
+            <span>About Me &bull; VIT Chennai</span>
           </div>
 
           <h2 
@@ -308,13 +308,13 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
             className="text-3xl sm:text-5xl font-bold tracking-tight text-white leading-tight font-sans inline-block"
           >
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-kiwi via-kiwi-yellow to-kiwi-chartreuse">
-              Bridging Deep Systems Engineering with Intuitive User Experience
+              Bridging Low-Level Systems with Practical AI Engineering
             </span>
           </h2>
 
           <div ref={headerDescRef} style={initialStyle} className="mt-2 min-h-[50px]">
             <p className="text-zinc-300 text-sm sm:text-base md:text-lg leading-relaxed inline-block">
-              I am a 3rd-year B.Tech Computer Science and Engineering student at VIT Chennai. A self-driven developer who explores Linux systems, desktop configurations, and applied AI pipelines outside the classroom, with a commitment to building software that solves genuine problems.
+              I'm a 3rd-year Computer Science student at VIT Chennai focusing on Linux server infrastructure, deployment pipelines, and applied AI/ML architectures. I like digging under the hood—from reverse proxies (Nginx, Caddy) and containerization to local LLM fine-tuning and multi-layer defense pipelines—while wrapping them in clean, responsive full-stack interfaces.
             </p>
           </div>
         </div>
@@ -371,7 +371,7 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
             </div>
           </div>
 
-          {/* Comment 2: Audit */}
+          {/* Comment 2: Quality & Architecture */}
           <div 
             ref={pin2Ref}
             style={initialStyle}
@@ -380,11 +380,11 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
             <MessageSquare size={16} className="text-kiwi-yellow shrink-0 mt-0.5" />
             <div className="text-xs font-mono">
               <div className="text-kiwi-yellow font-semibold flex items-center gap-2">
-                <span>SecOps</span>
-                <span className="text-[10px] text-zinc-500">&bull; Verification Audit</span>
+                <span>Reviewer</span>
+                <span className="text-[10px] text-zinc-500">&bull; Code Quality</span>
               </div>
               <p className="text-zinc-300 mt-1.5 leading-relaxed">
-                "Security is woven directly into the application architecture, not added as a superficial decoration."
+                "Focus on real user impact first—make the interface intuitive, keep the architecture maintainable, and test thoroughly."
               </p>
             </div>
           </div>

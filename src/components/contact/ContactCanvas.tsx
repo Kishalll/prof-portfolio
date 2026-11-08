@@ -196,7 +196,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                 verifiedBadgeRef.current,
                 {
                   scrambleText: {
-                    text: 'P-256 Verified',
+                    text: 'Direct Email',
                     chars: '0123456789ABCDEF!<>-_/[]{}',
                     speed: 0.5,
                   },
@@ -212,7 +212,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                 statusPillRef.current,
                 {
                   scrambleText: {
-                    text: 'Status: Available for Q2/Q3 2026 Internships',
+                    text: 'Status: Available for Summer 2026 Internships',
                     chars: '0123456789ABCDEF!<>-_/[]{}',
                     speed: 0.5,
                   },
@@ -228,7 +228,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                 academicYearRef.current,
                 {
                   scrambleText: {
-                    text: '3rd Year (Class of 2027)',
+                    text: '3rd Year (Class of 2028)',
                     chars: '0123456789ABCDEF!<>-_/[]{}',
                     speed: 0.5,
                   },
@@ -241,9 +241,9 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
 
             const fullReset = () => {
               reset();
-              if (verifiedBadgeRef.current) verifiedBadgeRef.current.textContent = 'P-256 Verified';
-              if (statusPillRef.current) statusPillRef.current.textContent = 'Status: Available for Q2/Q3 2026 Internships';
-              if (academicYearRef.current) academicYearRef.current.textContent = '3rd Year (Class of 2027)';
+              if (verifiedBadgeRef.current) verifiedBadgeRef.current.textContent = 'Direct Email';
+              if (statusPillRef.current) statusPillRef.current.textContent = 'Status: Available for Summer 2026 Internships';
+              if (academicYearRef.current) academicYearRef.current.textContent = '3rd Year (Class of 2028)';
             };
 
             createTargetTrigger(leftColRef.current, tl, fullReset, {
@@ -327,7 +327,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
         <div className="space-y-3 max-w-3xl min-h-[100px]">
           <div ref={headerBadgeRef} style={initialStyle} className="inline-flex items-center gap-2 text-xs font-mono text-kiwi">
             <MessageSquareCode size={14} />
-            <span>Direct Coordinates &bull; Collaborative Inquiries</span>
+            <span>Get in Touch &bull; Contact</span>
           </div>
 
           <h2 
@@ -335,7 +335,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
             style={initialStyle}
             className="text-3xl sm:text-5xl font-bold tracking-tight text-white leading-tight font-sans inline-block"
           >
-            Initiate Collaboration &amp; Direct Inquiries
+            Let's Connect &amp; Build Together
           </h2>
 
           <p 
@@ -343,7 +343,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
             style={initialStyle}
             className="text-zinc-300 text-sm sm:text-base leading-relaxed"
           >
-            Available for full-stack engineering roles, applied AI/RAG system architecture, security research, and direct technical consultations.
+            I'm actively looking for opportunities in Systems Engineering, Applied AI/ML, and Software Development. Whether you have an internship role, a project idea, or just want to chat, feel free to reach out!
           </p>
         </div>
 
@@ -360,7 +360,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                   <Mail size={18} />
                 </div>
                 <div className="min-w-0">
-                  <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">Primary Channel</span>
+                  <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">Email</span>
                   <a 
                     href="mailto:kishal2007@gmail.com"
                     className="text-sm sm:text-base font-bold text-white hover:text-kiwi transition-colors truncate block"
@@ -392,7 +392,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                   <Github size={18} />
                 </div>
                 <div className="min-w-0">
-                  <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">Code Repository</span>
+                  <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">GitHub</span>
                   <span className="text-sm sm:text-base font-bold text-white group-hover:text-yellow transition-colors truncate block">
                     github.com/Kishalll
                   </span>
@@ -413,7 +413,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                   <Linkedin size={18} />
                 </div>
                 <div className="min-w-0">
-                  <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">Professional Network</span>
+                  <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">LinkedIn</span>
                   <span className="text-sm sm:text-base font-bold text-white group-hover:text-chartreuse transition-colors truncate block">
                     Kishal P on LinkedIn
                   </span>
@@ -428,31 +428,31 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                 <GraduationCap size={18} />
               </div>
               <div>
-                <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">Academic Affiliation</span>
+                <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">Education</span>
                 <p className="text-sm font-semibold text-white">VIT Chennai &bull; B.Tech Computer Science</p>
-                <span ref={academicYearRef} className="text-xs text-zinc-500 font-mono">3rd Year (Class of 2027)</span>
+                <span ref={academicYearRef} className="text-xs text-zinc-500 font-mono">3rd Year (Class of 2028)</span>
               </div>
             </div>
 
             {/* Status Pill */}
             <div className="p-3.5 rounded-xl bg-black/60 border border-kiwi/30 flex items-center gap-2.5 text-xs font-mono text-kiwi">
               <span className="w-2 h-2 rounded-full bg-kiwi animate-ping shrink-0" />
-              <span ref={statusPillRef}>Status: Available for Q2/Q3 2026 Internships</span>
+              <span ref={statusPillRef}>Status: Available for Summer 2026 Internships</span>
             </div>
           </div>
 
-          {/* RIGHT COLUMN (7 Cols): Collaborative Message Composer Card */}
+          {/* RIGHT COLUMN (7 Cols): Direct Message Composer Card */}
           <div ref={composerCardRef} style={initialStyle} className="lg:col-span-7">
             <div className="relative p-6 sm:p-8 rounded-2xl bg-kiwi-surface/85 border border-kiwi-border shadow-2xl overflow-hidden h-full flex flex-col justify-between gap-6">
               
               {/* CARD HEADER */}
               <div className="flex items-center justify-between pb-4 border-b border-kiwi-border/60">
                 <div>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-kiwi">Collaborative Dispatch</span>
-                  <h3 className="text-xl font-bold text-white tracking-tight">Direct Message Composer</h3>
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-kiwi">Direct Message</span>
+                  <h3 className="text-xl font-bold text-white tracking-tight">Send a Message</h3>
                 </div>
                 <span ref={verifiedBadgeRef} className="px-2 py-0.5 text-[10px] font-mono rounded bg-black/80 border border-zinc-800 text-zinc-400">
-                  P-256 Verified
+                  Direct Email
                 </span>
               </div>
 
@@ -460,7 +460,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
               <form onSubmit={handleSendMessage} className="space-y-4 relative">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-zinc-300 block">Your Name / Handle</label>
+                    <label className="text-xs font-mono text-zinc-300 block">Your Name</label>
                     <input 
                       type="text"
                       required
@@ -472,7 +472,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-mono text-zinc-300 block">Your Email Address</label>
+                    <label className="text-xs font-mono text-zinc-300 block">Your Email</label>
                     <input 
                       type="email"
                       required
@@ -485,7 +485,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-zinc-300 block">Subject / Topic</label>
+                  <label className="text-xs font-mono text-zinc-300 block">Subject</label>
                   <input 
                     type="text"
                     placeholder="Project Inquiry / Engineering Role"
@@ -496,7 +496,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-mono text-zinc-300 block">Message Details</label>
+                  <label className="text-xs font-mono text-zinc-300 block">Message</label>
                   <textarea 
                     required
                     rows={4}
@@ -507,19 +507,19 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                   />
                 </div>
 
-                {/* SEND DISPATCH BUTTON */}
+                {/* SEND BUTTON */}
                 <div className="pt-2 flex items-center justify-between gap-4 relative">
                   <button
                     type="submit"
                     className="w-full sm:w-auto px-6 py-3 rounded-xl bg-kiwi text-black font-semibold text-sm hover:bg-yellow transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-kiwi/20 cursor-pointer"
                   >
-                    <span>Send Dispatch</span>
+                    <span>Send Message</span>
                     <Send size={15} />
                   </button>
 
                   {dispatched && (
                     <span className="text-xs font-mono text-kiwi flex items-center gap-1.5 animate-pulse">
-                      <Check size={14} /> Dispatch Prepared!
+                      <Check size={14} /> Opening email client...
                     </span>
                   )}
                 </div>

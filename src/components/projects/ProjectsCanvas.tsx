@@ -7,7 +7,8 @@ import {
   Gamepad2, 
   Chrome, 
   FolderGit2,
-  ExternalLink
+  ExternalLink,
+  Bot
 } from 'lucide-react';
 import { gsap, ScrollTrigger, waitForFontsAndLayout } from '../../animation/motionUtils';
 import { buildText, buildBlock, createTargetTrigger } from '../../animation/builders';
@@ -37,40 +38,54 @@ interface ProjectData {
 
 const PROJECTS_DATA: ProjectData[] = [
   {
-    id: 'threatlens',
-    name: 'ThreatLens',
-    badge: 'Flagship • Mobile Cybersecurity',
-    tagline: 'Multi-Vector Mobile Threat Detection & Cryptographic Verification',
-    description: 'React Native mobile security suite combining message scam/phishing detection, breach monitoring, and image authenticity verification. Integrates NVIDIA NIM AI threat detection (Llama 3.2 Vision + Mistral Nemotron fallback) tuned for regional fraud patterns, background notification scanning across WhatsApp/SMS/Telegram, DCT watermarking, P-256 ECDSA cryptographic assertion, and a Cloudflare Workers & D1 edge backend.',
-    tech: ['React Native', 'Expo', 'Python', 'TypeScript', 'NVIDIA NIM', 'Cloudflare Workers', 'P-256 ECDSA', 'SQLite'],
-    link: 'https://github.com/Kishalll/threat_lens',
-    icon: ShieldCheck,
-    span: 'col-span-1 md:col-span-2',
-    accentColor: '#FFFF00',
-    personaIndex: 2, // SecOps
-    actionLabel: 'Select ThreatLens',
+    id: 'ai-trains-ai',
+    name: 'AI-Trains-AI',
+    badge: 'Applied AI / ML • PyTorch & Ollama',
+    tagline: 'Role-Locked AI Assistant Framework with Synthetic Training & 4-Layer Guardrails',
+    description: 'Framework for building, fine-tuning, evaluating, and deploying role-locked AI assistants where AI teaches AI. Features synthetic dataset generation via teacher models, CPU/CUDA LoRA fine-tuning (PyTorch/PEFT) on Qwen2.5, persistent ChromaDB RAG grounding, a 4-layer defense pipeline (input guardrails, regional script detection, jailbreak filters, output sanitization), and a FastAPI streaming server.',
+    tech: ['Python', 'PyTorch', 'LoRA/PEFT', 'Ollama', 'ChromaDB', 'FastAPI', 'Qwen2.5', 'Linux CLI'],
+    link: 'https://github.com/Kishalll/ai-trains-ai',
+    icon: Bot,
+    span: 'col-span-1',
+    accentColor: '#CCFF00',
+    personaIndex: 4, // AI_Agent
+    actionLabel: 'Train AI Weights',
   },
   {
     id: 'hyprpilot',
     name: 'HyprPilot',
-    badge: 'Agentic AI • Linux Systems',
-    tagline: 'Locally Hosted Terminal Assistant for Hyprland Configurations',
-    description: 'Local agentic AI assistant for Hyprland desktop management on Linux, powered by a dense-vector RAG pipeline (FAISS + sentence-transformer embeddings) over curated system configs and dotfiles. Automates window rules and keybind orchestration with safety guardrails.',
-    tech: ['Bash', 'Python', 'Hyprland', 'FAISS RAG', 'Local Ollama', 'Linux CLI'],
+    badge: 'Systems & Linux • Terminal AI',
+    tagline: 'Local Terminal Assistant for Linux System Automation',
+    description: 'Locally hosted AI assistant for Linux system configuration and environment management, powered by a dense-vector RAG pipeline (FAISS + sentence-transformer embeddings) over curated system docs and configuration files. Automates system setup and terminal workflows with safety guardrails.',
+    tech: ['Bash', 'Python', 'Linux CLI', 'FAISS RAG', 'Local Ollama'],
     link: 'https://github.com/Kishalll/hypr-pilot',
     icon: Terminal,
     span: 'col-span-1',
     accentColor: '#DFFF00',
     personaIndex: 5, // Kernel
-    actionLabel: 'Assemble HyprPilot',
+    actionLabel: 'Assemble CLI Agent',
+  },
+  {
+    id: 'threatlens',
+    name: 'ThreatLens',
+    badge: 'Cybersecurity • Mobile & Edge',
+    tagline: 'Mobile Threat Detection with On-Device AI & Breach Alerts',
+    description: 'React Native mobile security app combining message scam/phishing detection, breach monitoring, and image authenticity checks in one dashboard. Features NVIDIA NIM AI threat detection tuned for fraud patterns, background notification scanning across WhatsApp/SMS/Telegram, breach alerts (XposedOrNot, LeakCheck), DCT watermarking, and a Cloudflare Workers backend.',
+    tech: ['React Native', 'Expo', 'Python', 'TypeScript', 'NVIDIA NIM', 'Cloudflare Workers', 'SQLite'],
+    link: 'https://github.com/Kishalll/threat_lens',
+    icon: ShieldCheck,
+    span: 'col-span-1',
+    accentColor: '#FFFF00',
+    personaIndex: 2, // SecOps
+    actionLabel: 'Verify Threat Model',
   },
   {
     id: 'fastfrwd',
     name: 'FastFrwd',
-    badge: 'Streaming AI • Video RAG',
-    tagline: 'Token-Streamed Video Indexing & Knowledge Synthesis',
-    description: 'Full-stack platform built with Vite and Express SSE token streams for live playlist indexing and multi-format document RAG. Features an automated yt-dlp pipeline to chunk lectures into structured learning units with NVIDIA NIM batched embeddings.',
-    tech: ['React.js', 'Node.js', 'Vite', 'Express SSE', 'NVIDIA NIM', 'yt-dlp RAG'],
+    badge: 'Applied AI • Video RAG',
+    tagline: 'Video Indexing & Document Q&A with Real-Time Streaming',
+    description: 'Full-stack platform built with Vite and Express SSE for live playlist indexing and token-streamed AI chat. Uses a yt-dlp pipeline to chunk lecture videos into structured learning units with NVIDIA NIM RAG (nv-embedqa-e5-v5 + Llama 3.3 70B) and multi-format document ingestion (PDF, DOCX, TXT, MD).',
+    tech: ['React.js', 'Node.js', 'Vite', 'Express SSE', 'NVIDIA NIM', 'yt-dlp', 'RAG'],
     link: 'https://github.com/Kishalll/fastfrwd',
     icon: Cpu,
     span: 'col-span-1',
@@ -81,9 +96,9 @@ const PROJECTS_DATA: ProjectData[] = [
   {
     id: 'promptwars',
     name: 'PromptWars',
-    badge: 'Real-Time • Multiplayer AI',
-    tagline: 'Synchronized Prompt-Engineering Arena with Local LLM Scoring',
-    description: 'LAN & web multiplayer prompt battle game where competitors battle across 3 rounds to describe hidden targets. Features synchronized round timers, Socket.IO real-time room matchmaking, SQLite persistent leaderboards, and an Ollama local scoring pipeline.',
+    badge: 'Multiplayer AI • Full-Stack',
+    tagline: 'Multiplayer Prompt-Engineering Arena with Local LLM Scoring',
+    description: 'LAN & web multiplayer prompt battle game where competitors battle across 3 rounds to describe hidden targets. Features synchronized round timers, Socket.IO real-time matchmaking, SQLite persistent leaderboards, and an Ollama local scoring pipeline combining embedding cosine similarity with an LLM evaluator.',
     tech: ['Next.js', 'React.js', 'Node.js', 'Socket.IO', 'SQLite', 'Ollama LLM'],
     link: 'https://github.com/Kishalll/PromptWars',
     icon: Gamepad2,
@@ -95,10 +110,10 @@ const PROJECTS_DATA: ProjectData[] = [
   {
     id: 'egateway',
     name: 'eGateway Extension',
-    badge: 'Manifest V3 • Network Security',
-    tagline: 'Automated Academic Research Proxy Routing Engine',
-    description: 'Manifest V3 Chrome extension detecting visits to supported academic repositories (IEEE Xplore, ScienceDirect, JSTOR, Springer, Wiley) and dynamically routing requests through institutional authentication proxies with cookie diffing and session preservation.',
-    tech: ['JavaScript', 'Chrome Extension API', 'Manifest V3', 'Cookie Diffing'],
+    badge: 'Browser Extension • Networking',
+    tagline: 'Automatic Institutional Proxy Routing for Academic Portals',
+    description: 'Manifest V3 Chrome extension detecting visits to supported academic repositories (IEEE Xplore, ScienceDirect, JSTOR, Springer, Wiley) and dynamically routing requests through institutional authentication proxies with session preservation.',
+    tech: ['JavaScript', 'Chrome Extension API', 'Manifest V3', 'WebNavigation'],
     link: 'https://chromewebstore.google.com/detail/ajapkokgpikmgcoehejlhccjjgmhfblp?utm_source=item-share-cb',
     isExternal: true,
     icon: Chrome,
@@ -119,8 +134,9 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
   const headerTitleRef = useRef<HTMLHeadingElement>(null);
   const headerDescRef = useRef<HTMLParagraphElement>(null);
 
-  // 5 Project Card Refs
+  // 6 Project Card Refs
   const cardRefs = [
+    useRef<HTMLDivElement>(null),
     useRef<HTMLDivElement>(null),
     useRef<HTMLDivElement>(null),
     useRef<HTMLDivElement>(null),
@@ -129,6 +145,7 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
   ];
 
   const badgeRefs = [
+    useRef<HTMLSpanElement>(null),
     useRef<HTMLSpanElement>(null),
     useRef<HTMLSpanElement>(null),
     useRef<HTMLSpanElement>(null),
@@ -226,7 +243,7 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
                 headerBadgeTextRef.current,
                 {
                   scrambleText: {
-                    text: 'Selected Engineering Works • 2025–2026',
+                    text: 'Selected Works • 2025–2026',
                     chars: '0123456789ABCDEF!<>-_/[]{}',
                     speed: 0.5,
                   },
@@ -240,7 +257,7 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
             const fullReset = () => {
               reset();
               if (headerBadgeTextRef.current) {
-                headerBadgeTextRef.current.textContent = 'Selected Engineering Works • 2025–2026';
+                headerBadgeTextRef.current.textContent = 'Selected Works • 2025–2026';
               }
             };
 
@@ -368,7 +385,7 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
         <div className="space-y-3 max-w-3xl min-h-[100px]">
           <div ref={headerBadgeRef} style={initialStyle} className="inline-flex items-center gap-2 text-xs font-mono text-kiwi">
             <FolderGit2 size={14} />
-            <span ref={headerBadgeTextRef}>Selected Engineering Works &bull; 2025–2026</span>
+            <span ref={headerBadgeTextRef}>Selected Works &bull; 2025–2026</span>
           </div>
 
           <h2 
@@ -376,7 +393,7 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
             style={initialStyle}
             className="text-3xl sm:text-5xl font-bold tracking-tight text-white leading-tight font-sans inline-block"
           >
-            Featured Systems &amp; Production Pipelines
+            Featured Projects
           </h2>
 
           <p 
@@ -384,7 +401,7 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
             style={initialStyle}
             className="text-zinc-300 text-sm sm:text-base leading-relaxed"
           >
-            Full-stack platforms, local RAG engines, cryptographic security architectures, and system-level tooling built with rigorous engineering standards.
+            Systems software, local AI tools, mobile security applications, and browser extensions built for real-world use.
           </p>
         </div>
 

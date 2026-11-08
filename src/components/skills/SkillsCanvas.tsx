@@ -1,9 +1,9 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { 
-  Code2, 
-  Layout, 
+  Terminal, 
   Brain, 
-  Shield, 
+  Server, 
+  Layout, 
   Layers
 } from 'lucide-react';
 import { gsap, ScrollTrigger, waitForFontsAndLayout } from '../../animation/motionUtils';
@@ -30,48 +30,48 @@ interface SkillTrayData {
 
 const SKILL_TRAYS: SkillTrayData[] = [
   {
-    id: 'languages-tray',
-    title: 'Languages & Core Runtimes',
-    badge: 'EXECUTION ENVIRONMENTS',
-    description: 'Strict typing, systems compilation, shell automation, and relational querying.',
-    skills: ['TypeScript', 'JavaScript', 'Python', 'C++', 'Bash/Shell', 'SQL', 'HTML5/CSS3'],
-    icon: Code2,
+    id: 'systems-tray',
+    title: 'Systems, Shell & Languages',
+    badge: 'SYSTEMS & LANGUAGES',
+    description: 'Low-level system languages, shell scripting, strict typing, and relational databases.',
+    skills: ['Linux / Bash', 'Python', 'C++', 'TypeScript', 'JavaScript', 'SQL', 'Git & GitHub'],
+    icon: Terminal,
+    color: '#DFFF00',
+    personaIndex: 5, // Kernel
+    actionLabel: 'Inspect Kernel & Shell',
+  },
+  {
+    id: 'ai-tray',
+    title: 'AI/ML, RAG & Local Models',
+    badge: 'APPLIED AI & ML PIPELINES',
+    description: 'Local model fine-tuning, vector search, dense retrieval, and multi-layer agent orchestration.',
+    skills: ['PyTorch', 'LoRA / PEFT', 'Ollama', 'ChromaDB', 'FAISS RAG', 'NVIDIA NIM', 'FastAPI', 'Hugging Face'],
+    icon: Brain,
     color: '#CCFF00',
-    personaIndex: 0, // Dev [Kishal]
-    actionLabel: 'Select Languages',
+    personaIndex: 4, // AI_Agent
+    actionLabel: 'Deploy Model Pipeline',
+  },
+  {
+    id: 'devops-tray',
+    title: 'Systems Deployment & DevOps',
+    badge: 'SYSTEMS DEPLOYMENT & DEVOPS',
+    description: 'Reverse proxy routing (Nginx, Caddy), containerization, serverless edge functions, and deployment pipelines.',
+    skills: ['Nginx', 'Caddy', 'Docker', 'Linux Server', 'Cloudflare Workers & D1', 'SQLite', 'AWS', 'REST APIs', 'Server-Sent Events (SSE)'],
+    icon: Server,
+    color: '#FFFF00',
+    personaIndex: 2, // SecOps
+    actionLabel: 'Verify Deployment',
   },
   {
     id: 'frontend-tray',
-    title: 'Frontend & Mobile Architecture',
-    badge: 'INTERACTIVE CLIENTS',
-    description: 'Responsive web apps, cross-platform mobile suites, and reactive UI component trees.',
-    skills: ['React.js', 'React Native', 'Next.js', 'Tailwind CSS', 'Expo', 'Framer Motion', 'Vite', 'Redux Toolkit'],
+    title: 'Frontend & Mobile Applications',
+    badge: 'FULL-STACK & CLIENTS',
+    description: 'Cross-platform mobile apps and responsive web interfaces built with modern reactive component frameworks.',
+    skills: ['React.js', 'React Native', 'Next.js', 'Vite', 'Expo', 'Tailwind CSS', 'Redux Toolkit', 'Framer Motion'],
     icon: Layout,
-    color: '#FFFF00',
+    color: '#CCFF00',
     personaIndex: 1, // UI_Design
-    actionLabel: 'Layout Interface',
-  },
-  {
-    id: 'backend-ai-tray',
-    title: 'Backend, AI & RAG Pipelines',
-    badge: 'INTELLIGENCE & SERVICES',
-    description: 'Dense-vector retrieval, NVIDIA NIM models, local LLMs, and real-time streaming sockets.',
-    skills: ['Node.js', 'Express.js', 'FastAPI', 'NVIDIA NIM', 'FAISS RAG', 'Local Ollama', 'Socket.IO', 'Server-Sent Events (SSE)', 'REST APIs'],
-    icon: Brain,
-    color: '#DFFF00',
-    personaIndex: 4, // AI_Agent
-    actionLabel: 'Deploy Vector DB',
-  },
-  {
-    id: 'systems-sec-tray',
-    title: 'Systems, Security & Cloud Edge',
-    badge: 'INFRASTRUCTURE & CRYPTO',
-    description: 'Cryptographic signatures, Linux window management, edge serverless, and cloud deployments.',
-    skills: ['Linux / Hyprland CLI', 'Docker', 'P-256 ECDSA', 'Cloudflare Workers & D1', 'SQLite', 'Git & GitHub', 'AWS', 'Security Auditing'],
-    icon: Shield,
-    color: '#FFFF00',
-    personaIndex: 2, // SecOps
-    actionLabel: 'Assert Security',
+    actionLabel: 'Render Client Tree',
   },
 ];
 
@@ -190,7 +190,7 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
                 headerBadgeTextRef.current,
                 {
                   scrambleText: {
-                    text: 'Skill Matrix • Production Architecture',
+                    text: 'Skills & Technologies • Tech Stack',
                     chars: '0123456789ABCDEF!<>-_/[]{}',
                     speed: 0.5,
                   },
@@ -204,7 +204,7 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
             const fullReset = () => {
               reset();
               if (headerBadgeTextRef.current) {
-                headerBadgeTextRef.current.textContent = 'Skill Matrix • Production Architecture';
+                headerBadgeTextRef.current.textContent = 'Skills & Technologies • Tech Stack';
               }
             };
 
@@ -332,7 +332,7 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
         <div className="space-y-3 max-w-3xl min-h-[100px]">
           <div ref={headerBadgeRef} style={initialStyle} className="inline-flex items-center gap-2 text-xs font-mono text-kiwi">
             <Layers size={14} />
-            <span ref={headerBadgeTextRef}>Skill Matrix &bull; Production Architecture</span>
+            <span ref={headerBadgeTextRef}>Skills &amp; Technologies &bull; Tech Stack</span>
           </div>
 
           <h2 
@@ -340,7 +340,7 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
             style={initialStyle}
             className="text-3xl sm:text-5xl font-bold tracking-tight text-white leading-tight font-sans inline-block"
           >
-            Technical Arsenal &amp; Auto-Layout Trays
+            Technologies &amp; Tools
           </h2>
 
           <p 
@@ -348,7 +348,7 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
             style={initialStyle}
             className="text-zinc-300 text-sm sm:text-base leading-relaxed"
           >
-            Domain-categorized auto-layout trays spanning system kernels, real-time AI vector stores, full-stack client runtimes, and cryptographic edge protocols.
+            Languages, frameworks, and developer tools I work with across systems engineering, AI pipelines, and application development.
           </p>
         </div>
 

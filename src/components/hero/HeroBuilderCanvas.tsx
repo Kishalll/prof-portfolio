@@ -2,9 +2,8 @@ import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { 
   ArrowUpRight, 
   Github, 
-  ShieldCheck, 
+  Terminal, 
   Cpu, 
-  Lock, 
   CheckCircle2 
 } from 'lucide-react';
 import { gsap, ScrollTrigger, waitForFontsAndLayout } from '../../animation/motionUtils';
@@ -206,9 +205,9 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
             });
 
             const stats = [
-              { ref: statNum1Ref.current, finalVal: 'Full-Stack + SecOps' },
-              { ref: statNum2Ref.current, finalVal: 'Class of 2027' },
-              { ref: statNum3Ref.current, finalVal: '05 Flagship Pipelines' },
+              { ref: statNum1Ref.current, finalVal: 'Systems & Applied AI' },
+              { ref: statNum2Ref.current, finalVal: "B.Tech CSE '28" },
+              { ref: statNum3Ref.current, finalVal: '06 Live Projects' },
               { ref: statNum4Ref.current, finalVal: 'Summer 2026' },
             ];
 
@@ -289,19 +288,19 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
             </span>
           </div>
 
-          {/* Badge 2: Cybersecurity */}
+          {/* Badge 2: Systems & Deployment */}
           <div className="relative inline-flex">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-black border border-kiwi-yellow/50 text-kiwi-yellow font-medium shadow-sm">
-              <ShieldCheck size={13} />
-              Cybersecurity &bull; ThreatLens
+              <Terminal size={13} />
+              Systems &bull; Nginx &amp; Caddy
             </span>
           </div>
 
-          {/* Badge 3: Applied AI */}
+          {/* Badge 3: Applied AI/ML */}
           <div className="relative inline-flex">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-md bg-black border border-kiwi-chartreuse/50 text-kiwi-chartreuse font-medium shadow-sm">
               <Cpu size={13} />
-              Applied AI &bull; FAISS RAG
+              Applied AI &bull; AI-Trains-AI
             </span>
           </div>
         </div>
@@ -314,7 +313,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
               style={initialStyle}
               className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white leading-[1.08] font-sans inline-block"
             >
-              Full-Stack Developer &amp; Systems Engineer
+              Systems &amp; Applied AI Engineer
             </h1>
 
             <div className="mt-4 min-h-[60px]">
@@ -323,7 +322,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
                 style={initialStyle}
                 className="text-zinc-300 text-base sm:text-lg md:text-xl leading-relaxed max-w-2xl font-normal inline-block"
               >
-                Hey, I'm Kishal P. I build full-stack systems, threat detection architectures, and applied AI/RAG pipelines with rigorous precision and intuitive user experience.
+                Hey, I'm Kishal. I build low-level system tooling, production deployments, and applied AI/ML pipelines. Passionate about Linux server infrastructure, local LLM orchestration, and crafting intuitive software that solves real problems.
               </p>
             </div>
           </div>
@@ -355,11 +354,11 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
             </a>
           </div>
 
-          {/* Verified Badge */}
+          {/* Availability Status Badge */}
           <div className="relative hidden sm:inline-flex">
-            <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-black/60 border border-zinc-800 text-zinc-400 font-mono text-[11px]">
-              <Lock size={12} className="text-kiwi-yellow" />
-              <span>P-256 ECDSA Verified</span>
+            <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-black/60 border border-zinc-800 text-zinc-300 font-mono text-[11px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-kiwi" />
+              <span>Available for Internships</span>
             </div>
           </div>
         </div>
@@ -374,21 +373,21 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
             <div>
               <div className="text-[10px] uppercase tracking-wider text-zinc-500">Focus</div>
               <div className="text-white font-medium mt-0.5">
-                <span ref={statNum1Ref}>Full-Stack + SecOps</span>
+                <span ref={statNum1Ref}>Systems &amp; Applied AI</span>
               </div>
             </div>
 
             <div>
               <div className="text-[10px] uppercase tracking-wider text-zinc-500">Education</div>
               <div className="text-white font-medium mt-0.5">
-                <span ref={statNum2Ref}>Class of 2027</span>
+                <span ref={statNum2Ref}>B.Tech CSE '28</span>
               </div>
             </div>
 
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Systems</div>
+              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Projects</div>
               <div className="text-white font-medium mt-0.5">
-                <span ref={statNum3Ref}>05 Flagship Pipelines</span>
+                <span ref={statNum3Ref}>06 Live Projects</span>
               </div>
             </div>
 

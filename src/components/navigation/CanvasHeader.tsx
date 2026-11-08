@@ -202,7 +202,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({
           <span className="w-2 h-2 rounded-full bg-kiwi shadow-kiwi-glow-sm" />
           <span className="text-sm font-semibold tracking-tight text-white">Kishal P</span>
           <span className="text-zinc-600 font-mono text-xs">/</span>
-          <span className="text-xs font-mono text-zinc-400">Full-Stack &amp; Systems</span>
+          <span className="text-xs font-mono text-zinc-400">Systems &amp; Applied AI</span>
         </div>
 
         {/* Center: Clean Navigation */}
