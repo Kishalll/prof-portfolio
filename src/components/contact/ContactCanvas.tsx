@@ -187,7 +187,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                 statusPillRef.current,
                 {
                   scrambleText: {
-                    text: 'Status: Available for Summer 2026 Internships',
+                    text: 'Status: Available for Internships',
                     chars: '0123456789ABCDEF!<>-_/[]{}',
                     speed: 0.5,
                   },
@@ -217,7 +217,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
             const fullReset = () => {
               reset();
               if (verifiedBadgeRef.current) verifiedBadgeRef.current.textContent = 'Direct Email';
-              if (statusPillRef.current) statusPillRef.current.textContent = 'Status: Available for Summer 2026 Internships';
+              if (statusPillRef.current) statusPillRef.current.textContent = 'Status: Available for Internships';
               if (academicYearRef.current) academicYearRef.current.textContent = '3rd Year (Class of 2028)';
             };
 
@@ -406,7 +406,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
             {/* Status Pill */}
             <div className="p-3.5 rounded-xl bg-black/60 border border-kiwi/30 flex items-center gap-2.5 text-xs font-mono text-kiwi">
               <span className="w-2 h-2 rounded-full bg-kiwi animate-ping shrink-0" />
-              <span ref={statusPillRef}>Status: Available for Summer 2026 Internships</span>
+              <span ref={statusPillRef}>Status: Available for Internships</span>
             </div>
           </div>
 

@@ -18,7 +18,6 @@ interface SkillsCanvasProps {
 interface SkillTrayData {
   id: string;
   title: string;
-  badge: string;
   description: string;
   skills: string[];
   icon: React.ElementType;
@@ -30,7 +29,6 @@ const SKILL_TRAYS: SkillTrayData[] = [
   {
     id: 'systems-tray',
     title: 'Systems, Shell & Languages',
-    badge: 'SYSTEMS & LANGUAGES',
     description: 'Low-level system languages, shell scripting, strict typing, and relational databases.',
     skills: ['Linux / Bash', 'Python', 'C++', 'TypeScript', 'JavaScript', 'SQL', 'Git & GitHub'],
     icon: Terminal,
@@ -40,7 +38,6 @@ const SKILL_TRAYS: SkillTrayData[] = [
   {
     id: 'ai-tray',
     title: 'AI/ML, RAG & Local Models',
-    badge: 'APPLIED AI & ML PIPELINES',
     description: 'Local model fine-tuning, vector search, dense retrieval, and multi-layer agent orchestration.',
     skills: ['PyTorch', 'LoRA / PEFT', 'Ollama', 'ChromaDB', 'FAISS RAG', 'NVIDIA NIM', 'FastAPI', 'Hugging Face'],
     icon: Brain,
@@ -50,7 +47,6 @@ const SKILL_TRAYS: SkillTrayData[] = [
   {
     id: 'devops-tray',
     title: 'Systems Deployment & DevOps',
-    badge: 'SYSTEMS DEPLOYMENT & DEVOPS',
     description: 'Reverse proxy routing (Nginx, Caddy), containerization, serverless edge functions, and deployment pipelines.',
     skills: ['Nginx', 'Caddy', 'Docker', 'Linux Server', 'Cloudflare Workers & D1', 'SQLite', 'AWS', 'REST APIs', 'Server-Sent Events (SSE)'],
     icon: Server,
@@ -60,7 +56,6 @@ const SKILL_TRAYS: SkillTrayData[] = [
   {
     id: 'frontend-tray',
     title: 'Frontend & Mobile Applications',
-    badge: 'FULL-STACK & CLIENTS',
     description: 'Cross-platform mobile apps and responsive web interfaces built with modern reactive component frameworks.',
     skills: ['React.js', 'React Native', 'Next.js', 'Vite', 'Expo', 'Tailwind CSS', 'Redux Toolkit', 'Framer Motion'],
     icon: Layout,
@@ -83,13 +78,6 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
     useRef<HTMLDivElement>(null),
     useRef<HTMLDivElement>(null),
     useRef<HTMLDivElement>(null),
-  ];
-
-  const trayBadgeRefs = [
-    useRef<HTMLSpanElement>(null),
-    useRef<HTMLSpanElement>(null),
-    useRef<HTMLSpanElement>(null),
-    useRef<HTMLSpanElement>(null),
   ];
 
   // Pool-managed autonomous cursor choreographer
@@ -213,29 +201,7 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
               isMobile,
             });
 
-            const badgeSpan = trayBadgeRefs[idx].current;
-            if (badgeSpan) {
-              tl.to(
-                badgeSpan,
-                {
-                  scrambleText: {
-                    text: trayData.badge,
-                    chars: '0123456789ABCDEF!<>-_/[]{}',
-                    speed: 0.5,
-                  },
-                  duration: 0.7,
-                  ease: 'none',
-                },
-                '-=0.2'
-              );
-            }
-
-            const fullReset = () => {
-              reset();
-              if (badgeSpan) badgeSpan.textContent = trayData.badge;
-            };
-
-            createTargetTrigger(trayEl, tl, fullReset, {
+            createTargetTrigger(trayEl, tl, reset, {
               rebuildOnReentry,
               staggerDelay: idx * 0.08,
             });
@@ -315,18 +281,7 @@ export const SkillsCanvas: React.FC<SkillsCanvasProps> = ({ buildKey = 0 }) => {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <span 
-                        ref={trayBadgeRefs[idx]}
-                        className="text-[10px] font-mono font-semibold tracking-wide uppercase px-2 py-0.5 rounded bg-black/80 border inline-block"
-                        style={{ 
-                          color: tray.color,
-                          borderColor: `${tray.color}30` 
-                        }}
-                      >
-                        {tray.badge}
-                      </span>
-
-                      <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight mt-1 group-hover:text-kiwi transition-colors">
+                      <h3 className="text-lg sm:text-xl font-bold text-white tracking-tight group-hover:text-kiwi transition-colors">
                         {tray.title}
                       </h3>
                     </div>

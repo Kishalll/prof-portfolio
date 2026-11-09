@@ -37,7 +37,6 @@ dist-ssr/
 # Local env files
 *.local
 .env
-.env.*
 
 # TypeScript cache
 *.tsbuildinfo

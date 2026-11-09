@@ -22,7 +22,6 @@ interface ProjectsCanvasProps {
 interface ProjectData {
   id: string;
   name: string;
-  badge: string;
   tagline: string;
   description: string;
   tech: string[];
@@ -38,7 +37,6 @@ const PROJECTS_DATA: ProjectData[] = [
   {
     id: 'ai-trains-ai',
     name: 'AI-Trains-AI',
-    badge: 'Applied AI / ML • PyTorch & Ollama',
     tagline: 'Role-Locked AI Assistant Framework with Synthetic Training & 4-Layer Guardrails',
     description: 'Framework for building, fine-tuning, evaluating, and deploying role-locked AI assistants where AI teaches AI. Features synthetic dataset generation via teacher models, CPU/CUDA LoRA fine-tuning (PyTorch/PEFT) on Qwen2.5, persistent ChromaDB RAG grounding, a 4-layer defense pipeline (input guardrails, regional script detection, jailbreak filters, output sanitization), and a FastAPI streaming server.',
     tech: ['Python', 'PyTorch', 'LoRA/PEFT', 'Ollama', 'ChromaDB', 'FastAPI', 'Qwen2.5', 'Linux CLI'],
@@ -51,7 +49,6 @@ const PROJECTS_DATA: ProjectData[] = [
   {
     id: 'hyprpilot',
     name: 'HyprPilot',
-    badge: 'Systems & Linux • Terminal AI',
     tagline: 'Local Terminal Assistant for Linux System Automation',
     description: 'Locally hosted AI assistant for Linux system configuration and environment management, powered by a dense-vector RAG pipeline (FAISS + sentence-transformer embeddings) over curated system docs and configuration files. Automates system setup and terminal workflows with safety guardrails.',
     tech: ['Bash', 'Python', 'Linux CLI', 'FAISS RAG', 'Local Ollama'],
@@ -64,7 +61,6 @@ const PROJECTS_DATA: ProjectData[] = [
   {
     id: 'threatlens',
     name: 'ThreatLens',
-    badge: 'Cybersecurity • Mobile & Edge',
     tagline: 'Mobile Threat Detection with On-Device AI & Breach Alerts',
     description: 'React Native mobile security app combining message scam/phishing detection, breach monitoring, and image authenticity checks in one dashboard. Features NVIDIA NIM AI threat detection tuned for fraud patterns, background notification scanning across WhatsApp/SMS/Telegram, breach alerts (XposedOrNot, LeakCheck), DCT watermarking, and a Cloudflare Workers backend.',
     tech: ['React Native', 'Expo', 'Python', 'TypeScript', 'NVIDIA NIM', 'Cloudflare Workers', 'SQLite'],
@@ -77,7 +73,6 @@ const PROJECTS_DATA: ProjectData[] = [
   {
     id: 'fastfrwd',
     name: 'FastFrwd',
-    badge: 'Applied AI • Video RAG',
     tagline: 'Video Indexing & Document Q&A with Real-Time Streaming',
     description: 'Full-stack platform built with Vite and Express SSE for live playlist indexing and token-streamed AI chat. Uses a yt-dlp pipeline to chunk lecture videos into structured learning units with NVIDIA NIM RAG (nv-embedqa-e5-v5 + Llama 3.3 70B) and multi-format document ingestion (PDF, DOCX, TXT, MD).',
     tech: ['React.js', 'Node.js', 'Vite', 'Express SSE', 'NVIDIA NIM', 'yt-dlp', 'RAG'],
@@ -90,7 +85,6 @@ const PROJECTS_DATA: ProjectData[] = [
   {
     id: 'promptwars',
     name: 'PromptWars',
-    badge: 'Multiplayer AI • Full-Stack',
     tagline: 'Multiplayer Prompt-Engineering Arena with Local LLM Scoring',
     description: 'LAN & web multiplayer prompt battle game where competitors battle across 3 rounds to describe hidden targets. Features synchronized round timers, Socket.IO real-time matchmaking, SQLite persistent leaderboards, and an Ollama local scoring pipeline combining embedding cosine similarity with an LLM evaluator.',
     tech: ['Next.js', 'React.js', 'Node.js', 'Socket.IO', 'SQLite', 'Ollama LLM'],
@@ -103,7 +97,6 @@ const PROJECTS_DATA: ProjectData[] = [
   {
     id: 'egateway',
     name: 'eGateway Extension',
-    badge: 'Browser Extension • Networking',
     tagline: 'Automatic Institutional Proxy Routing for Academic Portals',
     description: 'Manifest V3 Chrome extension detecting visits to supported academic repositories (IEEE Xplore, ScienceDirect, JSTOR, Springer, Wiley) and dynamically routing requests through institutional authentication proxies with session preservation.',
     tech: ['JavaScript', 'Chrome Extension API', 'Manifest V3', 'WebNavigation'],
@@ -132,15 +125,6 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
     useRef<HTMLDivElement>(null),
     useRef<HTMLDivElement>(null),
     useRef<HTMLDivElement>(null),
-  ];
-
-  const badgeRefs = [
-    useRef<HTMLSpanElement>(null),
-    useRef<HTMLSpanElement>(null),
-    useRef<HTMLSpanElement>(null),
-    useRef<HTMLSpanElement>(null),
-    useRef<HTMLSpanElement>(null),
-    useRef<HTMLSpanElement>(null),
   ];
 
   // Pool-managed autonomous cursor choreographer
@@ -264,29 +248,7 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
               isMobile,
             });
 
-            const badgeSpan = badgeRefs[idx].current;
-            if (badgeSpan) {
-              tl.to(
-                badgeSpan,
-                {
-                  scrambleText: {
-                    text: proj.badge,
-                    chars: '0123456789ABCDEF!<>-_/[]{}',
-                    speed: 0.5,
-                  },
-                  duration: 0.7,
-                  ease: 'none',
-                },
-                '-=0.2'
-              );
-            }
-
-            const fullReset = () => {
-              reset();
-              if (badgeSpan) badgeSpan.textContent = proj.badge;
-            };
-
-            createTargetTrigger(cardEl, tl, fullReset, {
+            createTargetTrigger(cardEl, tl, reset, {
               rebuildOnReentry,
               staggerDelay: (idx % 2) * 0.08,
             });
@@ -367,18 +329,7 @@ export const ProjectsCanvas: React.FC<ProjectsCanvasProps> = ({ buildKey = 0 }) 
                       </div>
 
                       <div>
-                        <span 
-                          ref={badgeRefs[idx]}
-                          className="text-[11px] font-mono font-semibold tracking-wide uppercase px-2 py-0.5 rounded bg-black/80 border inline-block"
-                          style={{ 
-                            color: project.accentColor,
-                            borderColor: `${project.accentColor}30` 
-                          }}
-                        >
-                          {project.badge}
-                        </span>
-
-                        <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight mt-1 group-hover:text-kiwi transition-colors">
+                        <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight group-hover:text-kiwi transition-colors">
                           {project.name}
                         </h3>
                       </div>

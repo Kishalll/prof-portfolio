@@ -8,7 +8,7 @@ import { SkillsCanvas } from './components/skills/SkillsCanvas';
 import { ContactCanvas } from './components/contact/ContactCanvas';
 import { VisitorCursor } from './components/canvas/VisitorCursor';
 import { SwarmLayer } from './components/canvas/SwarmLayer';
-import { WaveBackground } from './components/canvas/WaveBackground';
+import { BackgroundField } from './components/canvas/BackgroundField';
 import { ChoreographerProvider, useChoreographer } from './animation/ChoreographerContext';
 
 function PortfolioAppContent() {
@@ -32,8 +32,8 @@ function PortfolioAppContent() {
         />
       )}
 
-      {/* Animated wave field: drifts, flows with scroll, bends around the cursor */}
-      <WaveBackground />
+      {/* Animated background (waves or honeycomb): set VITE_BACKGROUND_STYLE in .env */}
+      <BackgroundField />
 
       {/* Subtle Ambient Radial Lighting */}
       <div 
@@ -85,7 +85,7 @@ function PortfolioAppContent() {
       {/* FOOTER */}
       <footer className="border-t border-kiwi-border/60 py-8 px-6 text-center text-xs font-mono text-zinc-500 mt-16">
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <span>&copy; {new Date().getFullYear()} Kishal P &bull; Built with care &amp; precision</span>
+          <span>&copy; {new Date().getFullYear()} Kishal P</span>
           <div className="flex items-center gap-4">
             <a href="https://github.com/Kishalll" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">GitHub</a>
             <a href="https://www.linkedin.com/in/kishal-p-0a13842b9/" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">LinkedIn</a>

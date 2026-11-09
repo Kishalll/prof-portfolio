@@ -2,8 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { 
   Terminal, 
   Layers, 
-  Cpu, 
-  MessageSquare 
+  Cpu
 } from 'lucide-react';
 import { gsap, ScrollTrigger, waitForFontsAndLayout } from '../../animation/motionUtils';
 import { buildText, buildBlock, createTargetTrigger } from '../../animation/builders';
@@ -54,8 +53,6 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
   const headerDescRef = useRef<HTMLDivElement>(null);
   const pillarRefs = [useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null), useRef<HTMLDivElement>(null)];
   const pillarNumRefs = [useRef<HTMLSpanElement>(null), useRef<HTMLSpanElement>(null), useRef<HTMLSpanElement>(null)];
-  const pin1Ref = useRef<HTMLDivElement>(null);
-  const pin2Ref = useRef<HTMLDivElement>(null);
 
   // GuideLines Refs
   const hLineRef = useRef<HTMLDivElement>(null);
@@ -78,8 +75,6 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
           headerTitleRef.current,
           headerDescRef.current,
           ...pillarRefs.map((r) => r.current),
-          pin1Ref.current,
-          pin2Ref.current,
         ].filter(Boolean),
         { autoAlpha: 0 }
       );
@@ -107,8 +102,6 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
           headerTitleRef.current,
           headerDescRef.current,
           ...pillarRefs.map((r) => r.current),
-          pin1Ref.current,
-          pin2Ref.current,
         ].filter(Boolean) as HTMLElement[];
 
         if (prefersReducedMotion) {
@@ -212,24 +205,6 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
               staggerDelay: idx * 0.08,
             });
           });
-
-          // 5. Targets: 2 Note Pins
-          [pin1Ref.current, pin2Ref.current].forEach((pinEl, pIdx) => {
-            if (!pinEl) return;
-            const agent = assign({ target: pinEl, label: pIdx === 0 ? 'Mount Reading' : 'Verify Feedback' });
-            const tl = gsap.timeline({ paused: true });
-            const { reset } = buildBlock(tl, {
-              containerEl: container,
-              targetEl: pinEl,
-              agent,
-              agentIndex: 6 + pIdx,
-              isMobile,
-            });
-            createTargetTrigger(pinEl, tl, reset, {
-              rebuildOnReentry,
-              staggerDelay: pIdx * 0.08,
-            });
-          });
         });
 
         ScrollTrigger.refresh();
@@ -316,46 +291,6 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
             );
           })}
         </div>
-
-        {/* COLLABORATIVE COMMENT PIN BOXES */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 min-h-[90px]">
-          {/* Comment 1: Philosophy */}
-          <div 
-            ref={pin1Ref}
-            style={initialStyle}
-            className="p-4 rounded-xl bg-black/60 border border-kiwi/30 flex items-start gap-3 shadow-md"
-          >
-            <MessageSquare size={16} className="text-kiwi shrink-0 mt-0.5" />
-            <div className="text-xs font-mono">
-              <div className="text-kiwi font-semibold flex items-center gap-2">
-                <span>Dev [Kishal]</span>
-                <span className="text-[10px] text-zinc-500">&bull; Core Philosophy</span>
-              </div>
-              <p className="text-zinc-300 mt-1.5 leading-relaxed">
-                "Build things that actually matter with smooth, intuitive UX. Fun doesn't mean sloppy; precision is earned through code."
-              </p>
-            </div>
-          </div>
-
-          {/* Comment 2: Quality & Architecture */}
-          <div 
-            ref={pin2Ref}
-            style={initialStyle}
-            className="p-4 rounded-xl bg-black/60 border border-kiwi-yellow/30 flex items-start gap-3 shadow-md"
-          >
-            <MessageSquare size={16} className="text-kiwi-yellow shrink-0 mt-0.5" />
-            <div className="text-xs font-mono">
-              <div className="text-kiwi-yellow font-semibold flex items-center gap-2">
-                <span>Reviewer</span>
-                <span className="text-[10px] text-zinc-500">&bull; Code Quality</span>
-              </div>
-              <p className="text-zinc-300 mt-1.5 leading-relaxed">
-                "Focus on real user impact first—make the interface intuitive, keep the architecture maintainable, and test thoroughly."
-              </p>
-            </div>
-          </div>
-        </div>
-
       </div>
     </section>
   );

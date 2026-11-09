@@ -1,8 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { 
   ArrowUpRight, 
-  Github, 
-  CheckCircle2 
+  Github
 } from 'lucide-react';
 import { gsap, ScrollTrigger, waitForFontsAndLayout } from '../../animation/motionUtils';
 import { buildText, buildBlock, createTargetTrigger } from '../../animation/builders';
@@ -25,14 +24,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
   const headlineRef = useRef<HTMLHeadingElement>(null);
   const bioRef = useRef<HTMLParagraphElement>(null);
   const ctaRowRef = useRef<HTMLDivElement>(null);
-  const specBlockRef = useRef<HTMLDivElement>(null);
   const photoRef = useRef<HTMLDivElement>(null);
-
-  // Stat Number Scramble Target Refs
-  const statNum1Ref = useRef<HTMLSpanElement>(null);
-  const statNum2Ref = useRef<HTMLSpanElement>(null);
-  const statNum3Ref = useRef<HTMLSpanElement>(null);
-  const statNum4Ref = useRef<HTMLSpanElement>(null);
 
   // GuideLines & Ruler Refs
   const hLineRef = useRef<HTMLDivElement>(null);
@@ -56,7 +48,6 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           headlineRef.current,
           bioRef.current,
           ctaRowRef.current,
-          specBlockRef.current,
           photoRef.current,
         ].filter(Boolean),
         { autoAlpha: 0 }
@@ -87,7 +78,6 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           headlineRef.current,
           bioRef.current,
           ctaRowRef.current,
-          specBlockRef.current,
           photoRef.current,
         ].filter(Boolean) as HTMLElement[];
 
@@ -183,56 +173,6 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
             createTargetTrigger(photoRef.current, tl, reset, {
               rebuildOnReentry,
               staggerDelay: 0.1,
-            });
-          }
-
-          // 4. Target: Spec Telemetry Block + ScrambleText
-          if (specBlockRef.current) {
-            const agent = assign({ target: specBlockRef.current, label: 'Scramble Stats' });
-            const tl = gsap.timeline({ paused: true });
-            const { reset } = buildBlock(tl, {
-              containerEl: container,
-              targetEl: specBlockRef.current,
-              agent,
-              agentIndex: 3,
-              isMobile,
-            });
-
-            const stats = [
-              { ref: statNum1Ref.current, finalVal: 'Systems & Applied AI' },
-              { ref: statNum2Ref.current, finalVal: "B.Tech CSE '28" },
-              { ref: statNum3Ref.current, finalVal: '06 Live Projects' },
-              { ref: statNum4Ref.current, finalVal: 'Summer 2026' },
-            ];
-
-            stats.forEach((st) => {
-              if (st.ref) {
-                tl.to(
-                  st.ref,
-                  {
-                    scrambleText: {
-                      text: st.finalVal,
-                      chars: '0123456789ABCDEF!<>-_/[]{}',
-                      speed: 0.5,
-                    },
-                    duration: 0.75,
-                    ease: 'none',
-                  },
-                  '-=0.2'
-                );
-              }
-            });
-
-            const fullReset = () => {
-              reset();
-              stats.forEach((st) => {
-                if (st.ref) st.ref.textContent = st.finalVal;
-              });
-            };
-
-            createTargetTrigger(specBlockRef.current, tl, fullReset, {
-              rebuildOnReentry,
-              staggerDelay: 0.28,
             });
           }
         });
@@ -331,44 +271,6 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
             <div className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-black/60 border border-zinc-800 text-zinc-300 font-mono text-[11px]">
               <span className="w-1.5 h-1.5 rounded-full bg-kiwi" />
               <span>Available for Internships</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ROW 4: SPEC FOOTER & SCRAMBLE STATS (Leaf target) */}
-        <div ref={specBlockRef} style={initialStyle} className="relative pt-6">
-          {/* Dividing Ruler Line */}
-          <div className="w-full h-[1px] bg-kiwi-border/80 origin-left" />
-
-          {/* 4 Column Stat Blocks */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono text-zinc-400 mt-4">
-            <div>
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Focus</div>
-              <div className="text-white font-medium mt-0.5">
-                <span ref={statNum1Ref}>Systems &amp; Applied AI</span>
-              </div>
-            </div>
-
-            <div>
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Education</div>
-              <div className="text-white font-medium mt-0.5">
-                <span ref={statNum2Ref}>B.Tech CSE '28</span>
-              </div>
-            </div>
-
-            <div>
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Projects</div>
-              <div className="text-white font-medium mt-0.5">
-                <span ref={statNum3Ref}>06 Live Projects</span>
-              </div>
-            </div>
-
-            <div>
-              <div className="text-[10px] uppercase tracking-wider text-zinc-500">Availability</div>
-              <div className="text-kiwi font-medium mt-0.5 flex items-center gap-1.5">
-                <CheckCircle2 size={12} />
-                <span ref={statNum4Ref}>Summer 2026</span>
-              </div>
             </div>
           </div>
         </div>

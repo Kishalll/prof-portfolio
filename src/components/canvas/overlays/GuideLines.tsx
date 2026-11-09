@@ -48,12 +48,7 @@ export const GuideLines = forwardRef<
             ref={rulerRef}
             className="absolute top-0 bottom-0 w-[1px] bg-[#FF3B30] opacity-0 pointer-events-none"
             style={{ left: `${rulerOffset}px`, visibility: 'hidden' }}
-          >
-            {/* Small ruler tick indicator */}
-            <span className="absolute top-2 left-1 text-[8px] font-mono text-[#FF3B30]/70 select-none">
-              RULER {rulerOffset}px
-            </span>
-          </div>
+          />
         )}
 
         {/* Dynamic Horizontal Blue Guide Line */}
