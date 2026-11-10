@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useLenis } from './hooks/useLenis';
 import { CanvasHeader } from './components/navigation/CanvasHeader';
 import { HeroBuilderCanvas } from './components/hero/HeroBuilderCanvas';
@@ -13,24 +12,21 @@ import { ChoreographerProvider, useChoreographer } from './animation/Choreograph
 
 function PortfolioAppContent() {
   useLenis();
-  const [isGridVisible, setIsGridVisible] = useState(true);
-  const { replayKey, triggerReplay } = useChoreographer();
+  const { replayKey } = useChoreographer();
 
   return (
     <div className="relative min-h-screen bg-black text-white font-sans selection:bg-kiwi selection:text-black">
-      {/* Interactive Visitor Mouse Follower (Isolated from autonomous agents) */}
+      {/* The visitor's own cursor (replaces the native pointer on mouse devices) */}
       <VisitorCursor />
 
       {/* Global flock of agent arrows: hovers around the visitor's mouse, leaves to build, returns */}
       <SwarmLayer />
 
-      {/* Background Dot-Matrix Canvas Grid (Toggleable) */}
-      {isGridVisible && (
-        <div 
-          className="fixed inset-0 pointer-events-none bg-dot-matrix bg-dot-grid opacity-60 z-0 transition-opacity duration-300"
-          aria-hidden="true"
-        />
-      )}
+      {/* Background Dot-Matrix Canvas Grid */}
+      <div 
+        className="fixed inset-0 pointer-events-none bg-dot-matrix bg-dot-grid opacity-60 z-0"
+        aria-hidden="true"
+      />
 
       {/* Animated background (waves or honeycomb): set VITE_BACKGROUND_STYLE in .env */}
       <BackgroundField />
@@ -42,12 +38,7 @@ function PortfolioAppContent() {
       />
 
       {/* TOP NAVIGATION */}
-      <CanvasHeader 
-        buildKey={replayKey}
-        isGridVisible={isGridVisible}
-        onToggleGrid={() => setIsGridVisible(prev => !prev)}
-        onReplayBuild={triggerReplay}
-      />
+      <CanvasHeader buildKey={replayKey} />
 
       {/* MAIN CANVAS BODY */}
       <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 flex flex-col gap-10 py-8">

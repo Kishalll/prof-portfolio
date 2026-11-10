@@ -8,11 +8,11 @@
   }
 
   html {
-    scroll-padding-top: 80px;
+    scroll-padding-top: 88px;
   }
 
   section[id] {
-    scroll-margin-top: 80px;
+    scroll-margin-top: 88px;
   }
   
   body {
@@ -60,3 +60,18 @@ html.lenis, html.lenis body {
   background: #ccff00;
 }
 
+
+/* The visitor's cursor is drawn by <VisitorCursor />, so hide the native pointer on mouse devices.
+   Text fields keep the native I-beam so typing stays obvious; touch devices are unaffected. */
+@media (hover: hover) and (pointer: fine) {
+  *,
+  *::before,
+  *::after {
+    cursor: none !important;
+  }
+  input,
+  textarea,
+  [contenteditable='true'] {
+    cursor: text !important;
+  }
+}

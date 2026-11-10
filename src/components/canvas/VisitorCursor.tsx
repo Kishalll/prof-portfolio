@@ -1,61 +1,92 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, useSpring } from 'framer-motion';
+
+/**
+ * The visitor's own cursor.
+ *
+ * On mouse devices the native pointer is hidden (see index.css) and this neon arrow takes its
+ * place, so there is only ever one cursor. It glides after the mouse with a light spring, grows
+ * over links/buttons, presses in on click, and steps aside over text fields (where the native
+ * I-beam is shown). Touch devices keep their normal behaviour and never see it.
+ */
+const FIELD_SELECTOR = 'input, textarea, select, [contenteditable="true"]';
+const CLICKABLE_SELECTOR = 'a, button, [role="button"], summary, label';
 
 export const VisitorCursor = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
+  const [isOverField, setIsOverField] = useState(false);
+  const visibleRef = useRef(false);
 
   const mouseX = useSpring(0, { damping: 30, stiffness: 400 });
   const mouseY = useSpring(0, { damping: 30, stiffness: 400 });
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      mouseX.set(e.clientX);
-      mouseY.set(e.clientY);
-      if (!isVisible) setIsVisible(true);
+    // Only for real mouse / trackpad pointers
+    if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
 
-      const target = e.target as HTMLElement | null;
-      if (target) {
-        const isClickable = 
-          target.tagName === 'A' || 
-          target.tagName === 'BUTTON' || 
-          target.closest('a') !== null || 
-          target.closest('button') !== null ||
-          target.getAttribute('role') === 'button';
-        setIsHovered(isClickable);
+    let firstMove = true;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (firstMove) {
+        // Start at the pointer instead of springing in from the corner
+        mouseX.jump(e.clientX);
+        mouseY.jump(e.clientY);
+        firstMove = false;
+      } else {
+        mouseX.set(e.clientX);
+        mouseY.set(e.clientY);
+      }
+      if (!visibleRef.current) {
+        visibleRef.current = true;
+        setIsVisible(true);
+      }
+
+      const target = e.target as Element | null;
+      if (target && target.closest) {
+        setIsOverField(target.closest(FIELD_SELECTOR) !== null);
+        setIsHovered(target.closest(CLICKABLE_SELECTOR) !== null);
       }
     };
 
-    const handleMouseLeave = () => setIsVisible(false);
-    const handleMouseEnter = () => setIsVisible(true);
+    const handleMouseLeave = () => {
+      visibleRef.current = false;
+      setIsVisible(false);
+    };
+    const handleMouseDown = () => setIsPressed(true);
+    const handleMouseUp = () => setIsPressed(false);
 
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('mousedown', handleMouseDown, { passive: true });
+    window.addEventListener('mouseup', handleMouseUp, { passive: true });
     document.addEventListener('mouseleave', handleMouseLeave);
-    document.addEventListener('mouseenter', handleMouseEnter);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener('mouseup', handleMouseUp);
       document.removeEventListener('mouseleave', handleMouseLeave);
-      document.removeEventListener('mouseenter', handleMouseEnter);
     };
-  }, [mouseX, mouseY, isVisible]);
+  }, [mouseX, mouseY]);
 
   if (!isVisible) return null;
 
   return (
     <motion.div
-      className="fixed top-0 left-0 pointer-events-none z-50 flex flex-col items-start select-none"
+      className="fixed top-0 left-0 pointer-events-none z-50 select-none"
       style={{
         x: mouseX,
         y: mouseY,
         translateX: '-2px',
         translateY: '-2px',
+        opacity: isOverField ? 0 : 1,
       }}
+      aria-hidden="true"
     >
-      {/* Precision Arrow Pointer */}
       <svg
-        className={`w-4 h-4 transition-transform duration-150 drop-shadow-[0_2px_10px_rgba(204,255,0,0.6)] ${
-          isHovered ? 'scale-125' : 'scale-100'
+        className={`w-5 h-5 origin-top-left transition-transform duration-150 drop-shadow-[0_2px_10px_rgba(204,255,0,0.6)] ${
+          isPressed ? 'scale-90' : isHovered ? 'scale-125' : 'scale-100'
         }`}
         viewBox="0 0 24 24"
         fill="none"
@@ -69,13 +100,6 @@ export const VisitorCursor = () => {
           strokeLinejoin="round"
         />
       </svg>
-
-      {/* Collaborator Badge Pill */}
-      <div className="flex items-center gap-1.5 ml-2 mt-0.5">
-        <span className="px-2 py-0.5 text-[10px] font-mono font-bold rounded shadow-xl bg-black/95 text-kiwi border border-kiwi/40">
-          You [Collaborator]
-        </span>
-      </div>
     </motion.div>
   );
 };
