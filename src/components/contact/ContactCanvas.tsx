@@ -282,7 +282,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
   return (
     <section 
       ref={containerRef}
-      className="relative pt-8 pb-20 sm:pt-12 sm:pb-24 min-h-[600px] w-full scroll-mt-24" 
+      className="relative pt-4 pb-16 sm:pt-6 sm:pb-20 min-h-[600px] w-full scroll-mt-16" 
       id="contact"
     >
       {/* 1. GUIDELINES OVERLAY LAYER */}

@@ -44,10 +44,20 @@ export function useLenis() {
         const targetElement = document.querySelector(href);
         if (targetElement) {
           e.preventDefault();
-          lenis.scrollTo(targetElement as HTMLElement, {
-            offset: -80,
-            duration: 1.0,
-          });
+          // Land with the section's title just below the fixed header. A numeric target is used
+          // (instead of the element) so no CSS scroll-margin or stale layout adds an extra gap.
+          const headerEl = document.querySelector('header');
+          const headerH = headerEl ? headerEl.getBoundingClientRect().height : 64;
+          const top =
+            href === '#hero'
+              ? 0
+              : Math.max(
+                  0,
+                  Math.round(
+                    (targetElement as HTMLElement).getBoundingClientRect().top + window.scrollY - headerH
+                  )
+                );
+          lenis.scrollTo(top, { duration: 1.0 });
         }
       }
     };

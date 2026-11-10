@@ -50,7 +50,7 @@ function PortfolioAppContent() {
       />
 
       {/* MAIN CANVAS BODY */}
-      <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 flex flex-col gap-16 py-8">
+      <main className="relative z-10 max-w-5xl mx-auto px-4 sm:px-6 flex flex-col gap-10 py-8">
         {/* HERO SECTION */}
         <HeroBuilderCanvas 
           key={`hero-${replayKey}`}

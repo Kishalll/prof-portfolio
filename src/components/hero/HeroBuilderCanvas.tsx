@@ -194,7 +194,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
   return (
     <section 
       ref={containerRef}
-      className="relative pt-6 pb-12 sm:pt-10 sm:pb-16 min-h-[580px] w-full scroll-mt-24" 
+      className="relative pt-6 pb-8 sm:pt-10 sm:pb-10 min-h-[580px] w-full scroll-mt-16" 
       id="hero"
     >
       {/* 1. GUIDELINES OVERLAY LAYER (Position absolute inside section container) */}
@@ -233,7 +233,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
                 style={initialStyle}
                 className="text-zinc-300 text-base sm:text-lg md:text-xl leading-relaxed max-w-2xl font-normal inline-block"
               >
-                Hey, I'm Kishal. I build low-level system tooling, production deployments, and applied AI/ML pipelines. Passionate about Linux server infrastructure, local LLM orchestration, and crafting intuitive software that solves real problems.
+                Hey, <span className="text-kiwi selection:bg-white selection:text-black">I'm Kishal</span>. I build low-level system tooling, production deployments, and applied AI/ML pipelines. Passionate about Linux server infrastructure, local LLM orchestration, and crafting intuitive software that solves real problems.
               </p>
             </div>
           </div>
