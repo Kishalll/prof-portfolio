@@ -277,7 +277,7 @@ export const AboutCanvas: React.FC<AboutCanvasProps> = ({ buildKey = 0 }) => {
                     <span>{pillar.title}</span>
                   </div>
 
-                  <span ref={pillarNumRefs[idx]} className="text-[10px] text-zinc-500 font-mono">
+                  <span ref={pillarNumRefs[idx]} className="text-[11px] text-zinc-500 font-mono">
                     {pillar.number}
                   </span>
                 </div>

@@ -33,7 +33,7 @@ interface Point {
 }
 
 /** unspawned = has never built anything yet: hidden and not part of the swarm */
-type AgentState = 'unspawned' | 'idle' | 'flying' | 'away';
+type AgentState = 'unspawned' | 'idle' | 'flying' | 'away' | 'fading';
 
 interface Flight {
   t0: number; // seconds (performance.now()/1000)
@@ -70,6 +70,10 @@ interface SwarmAgent {
   wr: number;
   shown: boolean;
   ghostOp: number[];
+  // touch mode: the arrow fades out in place after its build (fadeT0 = start time in seconds)
+  fadeT0: number;
+  op: number; // arrow opacity 0..1
+  wo: number; // last opacity written to the DOM
 }
 
 interface AwayRecord {
@@ -107,6 +111,7 @@ class SwarmManager {
   private agents: SwarmAgent[] = [];
   private away = new Map<object, AwayRecord>();
   private reduced = false;
+  private touch = false;
   private tickerOn = false;
 
   /* ------------------------------------------------------------------ setup */
@@ -156,6 +161,9 @@ class SwarmManager {
         wr: NaN,
         shown: false,
         ghostOp: [-1, -1, -1],
+        fadeT0: 0,
+        op: 1,
+        wo: 1,
       };
       this.resetHistory(this.agents[index]);
     });
@@ -181,6 +189,25 @@ class SwarmManager {
     a.el = null;
     a.ghosts = [];
     if (!this.agents.some((x) => x.el)) this.stopTicker();
+  }
+
+  /**
+   * Touch screens have no pointer to gather around, so arrows would just sit on top of the text.
+   * In touch mode an agent flies in from the edge, builds, then fades out where it finished.
+   */
+  public setTouchMode(touch: boolean) {
+    this.touch = touch;
+    if (touch) {
+      // Anything currently parked in the cluster fades away instead of lingering
+      const now = performance.now() / 1000;
+      for (const a of this.agents) {
+        if (a.state === 'idle' || a.state === 'flying') {
+          a.state = 'fading';
+          a.fly = null;
+          a.fadeT0 = now;
+        }
+      }
+    }
   }
 
   public setReducedMotion(reduced: boolean) {
@@ -233,6 +260,7 @@ class SwarmManager {
 
     agent.state = 'away';
     agent.fly = null;
+    agent.op = 1;
     this.away.set(owner, { agent, cursorEl, containerEl, lastX: vx, lastY: vy });
     this.writeDom(agent, 1);
 
@@ -280,7 +308,18 @@ class SwarmManager {
     agent.y = agent.py = vy;
     this.resetHistory(agent);
 
-    if (this.reduced) {
+    agent.op = 1;
+    if (this.touch) {
+      // Fade out right where the build finished (instantly with reduced motion)
+      agent.fly = null;
+      if (this.reduced) {
+        agent.state = 'unspawned';
+        agent.placed = false;
+      } else {
+        agent.state = 'fading';
+        agent.fadeT0 = performance.now() / 1000;
+      }
+    } else if (this.reduced) {
       agent.state = 'idle';
       agent.fly = null;
     } else {
@@ -425,6 +464,18 @@ class SwarmManager {
     for (const a of this.agents) {
       if (!a.el || a.state === 'away' || a.state === 'unspawned') continue;
 
+      if (a.state === 'fading') {
+        const p = clamp((now - a.fadeT0) / 0.5, 0, 1);
+        a.op = 1 - p;
+        if (p >= 1) {
+          a.state = 'unspawned';
+          a.placed = false;
+          a.op = 1;
+        }
+        this.writeDom(a, 0);
+        continue;
+      }
+
       const tx = m.clientX + a.slot.dx;
       const ty = m.clientY + a.slot.dy;
 
@@ -485,6 +536,11 @@ class SwarmManager {
     if (visible !== a.shown) {
       el.style.visibility = visible ? 'visible' : 'hidden';
       a.shown = visible;
+    }
+
+    if (visible && a.op !== a.wo) {
+      el.style.opacity = String(Math.round(a.op * 100) / 100);
+      a.wo = a.op;
     }
 
     if (visible && (a.x !== a.wx || a.y !== a.wy || a.rot !== a.wr)) {

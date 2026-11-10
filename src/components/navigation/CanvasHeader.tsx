@@ -1,5 +1,6 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { Github, Linkedin, Mail } from 'lucide-react';
+import { useActiveSection } from '../../hooks/useActiveSection';
 import { gsap, waitForFontsAndLayout, getRelativeBounds, addCurvedCursorTravel, addSelectionBoxBuild, addSwarmReturn } from '../../animation/motionUtils';
 import { swarm } from '../../animation/swarm';
 import { useChoreographer } from '../../animation/ChoreographerContext';
@@ -16,6 +17,7 @@ const NAV_ITEMS = [
   { id: 'skills', label: 'Skills' },
   { id: 'contact', label: 'Contact' },
 ] as const;
+const NAV_IDS = NAV_ITEMS.map((i) => i.id);
 
 export const CanvasHeader: React.FC<CanvasHeaderProps> = ({ buildKey = 0 }) => {
   const { prefersReducedMotion, isMobile } = useChoreographer();
@@ -30,35 +32,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({ buildKey = 0 }) => {
   const cursorRef = useRef<HTMLDivElement>(null);
 
   // Scroll-spy: which section the visitor is currently in (highlighted in the nav)
-  const [activeId, setActiveId] = useState<string>('hero');
-  useEffect(() => {
-    let raf = 0;
-    const update = () => {
-      raf = 0;
-      const line = (headerRef.current?.getBoundingClientRect().height ?? 72) + window.innerHeight * 0.25;
-      let current: string = NAV_ITEMS[0].id;
-      for (const item of NAV_ITEMS) {
-        const el = document.getElementById(item.id);
-        if (el && el.getBoundingClientRect().top <= line) current = item.id;
-      }
-      // At the very bottom of the page the last section is always the active one
-      if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) {
-        current = NAV_ITEMS[NAV_ITEMS.length - 1].id;
-      }
-      setActiveId(current);
-    };
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update);
-    };
-    update();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
-    return () => {
-      if (raf) cancelAnimationFrame(raf);
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-    };
-  }, []);
+  const activeId = useActiveSection(NAV_IDS);
 
   const initialStyle = prefersReducedMotion ? undefined : { opacity: 0, visibility: 'hidden' as const };
 
@@ -194,7 +168,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({ buildKey = 0 }) => {
   return (
     <header 
       ref={headerRef} 
-      className="sticky top-0 z-40 backdrop-blur-md bg-black/85 border-b border-kiwi-border px-6 py-5 relative"
+      className="sticky top-0 z-40 backdrop-blur-md bg-black/85 border-b border-kiwi-border px-4 py-1.5 md:px-6 md:py-5 relative"
     >
       {/* Selection Box & Cursor for Header Intro */}
       <SelectionBox ref={boxRef} label="Canvas Header" />
@@ -208,9 +182,9 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({ buildKey = 0 }) => {
         {/* Left: Brand Identity */}
         <div ref={brandRef} style={initialStyle} className="flex items-center gap-3.5">
           <span className="w-2.5 h-2.5 rounded-full bg-kiwi shadow-kiwi-glow-sm" />
-          <span className="text-lg font-semibold tracking-tight text-white">Kishal P</span>
-          <span className="text-zinc-600 font-mono text-sm">/</span>
-          <span className="text-sm font-mono text-zinc-400">Systems &amp; Applied AI</span>
+          <span className="text-base md:text-lg font-semibold tracking-tight text-white whitespace-nowrap">Kishal P</span>
+          <span className="hidden lg:inline text-zinc-600 font-mono text-sm">/</span>
+          <span className="hidden lg:inline whitespace-nowrap text-sm font-mono text-zinc-400">Systems &amp; Applied AI</span>
         </div>
 
         {/* Center: Clean Navigation */}
@@ -235,12 +209,12 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({ buildKey = 0 }) => {
         </nav>
 
         {/* Right: Actions */}
-        <div ref={actionsRef} style={initialStyle} className="flex items-center gap-3.5">
+        <div ref={actionsRef} style={initialStyle} className="flex items-center gap-1 md:gap-3.5">
           <a
             href="https://github.com/Kishalll"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 text-zinc-400 hover:text-white hover:bg-kiwi-surface rounded-md transition-colors"
+            className="inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-2 text-zinc-400 hover:text-white hover:bg-kiwi-surface rounded-md transition-colors"
             aria-label="GitHub Profile"
           >
             <Github size={19} />
@@ -249,7 +223,7 @@ export const CanvasHeader: React.FC<CanvasHeaderProps> = ({ buildKey = 0 }) => {
             href="https://www.linkedin.com/in/kishal-p-0a13842b9/"
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 text-zinc-400 hover:text-white hover:bg-kiwi-surface rounded-md transition-colors"
+            className="inline-flex items-center justify-center w-11 h-11 md:w-auto md:h-auto md:p-2 text-zinc-400 hover:text-white hover:bg-kiwi-surface rounded-md transition-colors"
             aria-label="LinkedIn Profile"
           >
             <Linkedin size={19} />

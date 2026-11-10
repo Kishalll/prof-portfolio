@@ -38,8 +38,9 @@ export const HexBackground: React.FC = () => {
     let lastRawY = cur.y;
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       W = window.innerWidth;
+      // Phones: cap the pixel ratio so the canvas stays cheap to redraw
+      const dpr = Math.min(window.devicePixelRatio || 1, W < 700 ? 1.5 : 2);
       H = window.innerHeight;
       canvas.width = Math.round(W * dpr);
       canvas.height = Math.round(H * dpr);
@@ -80,7 +81,7 @@ export const HexBackground: React.FC = () => {
       ctx.clearRect(0, 0, W, H);
       ctx.lineJoin = 'round';
 
-      const r = W < 700 ? 26 : 34; // cell radius
+      const r = W < 700 ? 30 : 34; // cell radius (larger on phones = fewer cells to draw)
       const dx = 1.5 * r; // column spacing
       const dy = Math.sqrt(3) * r; // row spacing
       const drift = ((scroll * 0.12) % dy + dy) % dy; // grid slides slowly as you scroll

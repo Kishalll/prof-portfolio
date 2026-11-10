@@ -41,8 +41,9 @@ export const WaveBackground: React.FC = () => {
     let lastRawY = cur.y;
 
     const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
       W = window.innerWidth;
+      // Phones: cap the pixel ratio so the canvas stays cheap to redraw
+      const dpr = Math.min(window.devicePixelRatio || 1, W < 700 ? 1.5 : 2);
       H = window.innerHeight;
       canvas.width = Math.round(W * dpr);
       canvas.height = Math.round(H * dpr);

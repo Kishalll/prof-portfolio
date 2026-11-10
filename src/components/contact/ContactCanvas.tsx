@@ -329,10 +329,10 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                   <Mail size={18} />
                 </div>
                 <div className="min-w-0">
-                  <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">Email</span>
+                  <span className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider block">Email</span>
                   <a 
                     href="mailto:kishal2007@gmail.com"
-                    className="text-sm sm:text-base font-bold text-white hover:text-kiwi transition-colors truncate block"
+                    className="text-sm sm:text-base font-bold text-white hover:text-kiwi transition-colors truncate block py-1.5 -my-1.5"
                   >
                     kishal2007@gmail.com
                   </a>
@@ -341,7 +341,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
 
               <button
                 onClick={handleCopyEmail}
-                className="p-2 rounded-lg bg-black/80 border border-zinc-800 hover:border-kiwi text-zinc-400 hover:text-white transition-all shrink-0 cursor-pointer"
+                className="w-11 h-11 sm:w-auto sm:h-auto sm:p-2 inline-flex items-center justify-center rounded-lg bg-black/80 border border-zinc-800 hover:border-kiwi text-zinc-400 hover:text-white transition-all shrink-0 cursor-pointer"
                 title="Copy email to clipboard"
                 aria-label="Copy email"
               >
@@ -361,7 +361,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                   <Github size={18} />
                 </div>
                 <div className="min-w-0">
-                  <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">GitHub</span>
+                  <span className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider block">GitHub</span>
                   <span className="text-sm sm:text-base font-bold text-white group-hover:text-yellow transition-colors truncate block">
                     github.com/Kishalll
                   </span>
@@ -382,7 +382,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                   <Linkedin size={18} />
                 </div>
                 <div className="min-w-0">
-                  <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">LinkedIn</span>
+                  <span className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider block">LinkedIn</span>
                   <span className="text-sm sm:text-base font-bold text-white group-hover:text-chartreuse transition-colors truncate block">
                     Kishal P on LinkedIn
                   </span>
@@ -397,7 +397,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                 <GraduationCap size={18} />
               </div>
               <div>
-                <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider block">Education</span>
+                <span className="text-[11px] font-mono text-zinc-400 uppercase tracking-wider block">Education</span>
                 <p className="text-sm font-semibold text-white">VIT Chennai &bull; B.Tech Computer Science</p>
                 <span ref={academicYearRef} className="text-xs text-zinc-500 font-mono">3rd Year (Class of 2028)</span>
               </div>
@@ -417,10 +417,10 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
               {/* CARD HEADER */}
               <div className="flex items-center justify-between pb-4 border-b border-kiwi-border/60">
                 <div>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-kiwi">Direct Message</span>
+                  <span className="text-[11px] font-mono uppercase tracking-wider text-kiwi">Direct Message</span>
                   <h3 className="text-xl font-bold text-white tracking-tight">Send a Message</h3>
                 </div>
-                <span ref={verifiedBadgeRef} className="px-2 py-0.5 text-[10px] font-mono rounded bg-black/80 border border-zinc-800 text-zinc-400">
+                <span ref={verifiedBadgeRef} className="px-2 py-0.5 text-[11px] font-mono rounded bg-black/80 border border-zinc-800 text-zinc-400">
                   Direct Email
                 </span>
               </div>
@@ -436,7 +436,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                       placeholder="Alex Vance"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/80 border border-zinc-800 text-white placeholder-zinc-600 text-sm font-sans focus:outline-none focus:border-kiwi transition-colors"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/80 border border-zinc-800 text-white placeholder-zinc-600 text-base sm:text-sm font-sans focus:outline-none focus:border-kiwi transition-colors"
                     />
                   </div>
 
@@ -448,7 +448,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                       placeholder="alex@company.com"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/80 border border-zinc-800 text-white placeholder-zinc-600 text-sm font-sans focus:outline-none focus:border-kiwi transition-colors"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-black/80 border border-zinc-800 text-white placeholder-zinc-600 text-base sm:text-sm font-sans focus:outline-none focus:border-kiwi transition-colors"
                     />
                   </div>
                 </div>
@@ -460,7 +460,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                     placeholder="Project Inquiry / Engineering Role"
                     value={formData.subject}
                     onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/80 border border-zinc-800 text-white placeholder-zinc-600 text-sm font-sans focus:outline-none focus:border-kiwi transition-colors"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/80 border border-zinc-800 text-white placeholder-zinc-600 text-base sm:text-sm font-sans focus:outline-none focus:border-kiwi transition-colors"
                   />
                 </div>
 
@@ -472,7 +472,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                     placeholder="Tell me about your project, timeline, or engineering opportunity..."
                     value={formData.message}
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/80 border border-zinc-800 text-white placeholder-zinc-600 text-sm font-sans focus:outline-none focus:border-kiwi transition-colors resize-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/80 border border-zinc-800 text-white placeholder-zinc-600 text-base sm:text-sm font-sans focus:outline-none focus:border-kiwi transition-colors resize-none"
                   />
                 </div>
 
@@ -480,7 +480,7 @@ export const ContactCanvas: React.FC<ContactCanvasProps> = ({ buildKey = 0 }) =>
                 <div className="pt-2 flex items-center justify-between gap-4 relative">
                   <button
                     type="submit"
-                    className="w-full sm:w-auto px-6 py-3 rounded-xl bg-kiwi text-black font-semibold text-sm hover:bg-yellow transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-kiwi/20 cursor-pointer"
+                    className="w-full sm:w-auto px-6 py-3 rounded-xl bg-kiwi text-black font-semibold text-sm min-h-12 sm:min-h-0 hover:bg-yellow transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-kiwi/20 cursor-pointer"
                   >
                     <span>Send Message</span>
                     <Send size={15} />

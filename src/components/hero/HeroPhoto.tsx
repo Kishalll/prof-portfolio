@@ -18,7 +18,7 @@ const Handle: React.FC<{ className: string }> = ({ className }) => (
   <span className={`absolute w-2 h-2 bg-black border border-kiwi ${className}`} aria-hidden="true" />
 );
 
-/** Top-right portrait card (shows a placeholder until public/profile.jpg exists). */
+/** Portrait card: centred above the headline on phones, top-right on md+ (shows a placeholder until public/profile.jpg exists). */
 export const HeroPhoto = forwardRef<HTMLDivElement, { style?: React.CSSProperties }>(
   ({ style }, ref) => {
     const [failed, setFailed] = useState(false);
@@ -27,7 +27,7 @@ export const HeroPhoto = forwardRef<HTMLDivElement, { style?: React.CSSPropertie
       <div
         ref={ref}
         style={style}
-        className="relative ml-auto mb-6 w-24 md:mb-0 md:ml-0 md:absolute md:top-0 md:right-0 md:w-[200px] lg:w-[232px]"
+        className="relative mx-auto mb-9 w-36 md:mb-0 md:mx-0 md:absolute md:top-0 md:right-0 md:w-[200px] lg:w-[232px]"
       >
         {/* soft glow behind the frame */}
         <div
@@ -76,7 +76,7 @@ export const HeroPhoto = forwardRef<HTMLDivElement, { style?: React.CSSPropertie
         <Handle className="-bottom-1 -right-1" />
 
         {/* name chip */}
-        <div className="absolute -bottom-3 left-3 hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-black/90 border border-kiwi-border text-[10px] font-mono text-zinc-200">
+        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 md:left-3 md:translate-x-0 inline-flex items-center whitespace-nowrap gap-1.5 px-2.5 py-1 rounded-md bg-black/90 border border-kiwi-border text-[10px] font-mono text-zinc-200">
           <span className="w-1.5 h-1.5 rounded-full bg-kiwi" />
           Kishal P
         </div>
