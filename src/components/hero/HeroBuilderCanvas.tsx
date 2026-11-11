@@ -9,6 +9,8 @@ import { useChoreographer } from '../../animation/ChoreographerContext';
 import { useSectionChoreographer, ChoreographerLayer } from '../../animation/CursorChoreographer';
 import { GuideLines } from '../canvas/overlays';
 import { HeroPhoto } from './HeroPhoto';
+import { GitHubGraph } from './GitHubGraph';
+import { useContributions, loadContributions } from '../../hooks/useGithubContributions';
 
 interface HeroBuilderCanvasProps {
   buildKey?: number;
@@ -25,6 +27,8 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
   const bioRef = useRef<HTMLParagraphElement>(null);
   const ctaRowRef = useRef<HTMLDivElement>(null);
   const photoRef = useRef<HTMLDivElement>(null);
+  const graphRef = useRef<HTMLDivElement>(null);
+  const { data: contribData, status: contribStatus } = useContributions();
 
   // GuideLines & Ruler Refs
   const hLineRef = useRef<HTMLDivElement>(null);
@@ -49,6 +53,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           bioRef.current,
           ctaRowRef.current,
           photoRef.current,
+          graphRef.current,
         ].filter(Boolean),
         { autoAlpha: 0 }
       );
@@ -79,6 +84,7 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
           bioRef.current,
           ctaRowRef.current,
           photoRef.current,
+          graphRef.current,
         ].filter(Boolean) as HTMLElement[];
 
         // Handle prefers-reduced-motion: reveal all content immediately with zero overlays
@@ -179,6 +185,41 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
 
         // Ensure triggers recalculate immediately
         ScrollTrigger.refresh();
+
+        // 6. Target: GitHub contribution graph. Built last, once we know the API answered
+        // (if it isn't configured the graph is simply not rendered and nothing flies to it).
+        const graphOk = await Promise.race([
+          loadContributions().then((d) => !!d),
+          new Promise<boolean>((r) => setTimeout(() => r(true), 2500)),
+        ]);
+        if (isCancelled || !graphOk || !graphRef.current) return;
+        const graphEl = graphRef.current;
+        ctx.add(() => {
+          const agent = assign({ target: graphEl, label: 'Plot Contributions' });
+          const tl = gsap.timeline({ paused: true });
+          const { reset } = buildBlock(tl, {
+            containerEl: container,
+            targetEl: graphEl,
+            agent,
+            agentIndex: 3,
+            isMobile,
+          });
+          // Cells wipe in left -> right as the cursor settles on the block
+          const sweepEl = graphEl.querySelector('[data-gh-sweep]');
+          if (sweepEl) {
+            tl.fromTo(
+              sweepEl,
+              { clipPath: 'inset(0 100% 0 0)' },
+              { clipPath: 'inset(0 0% 0 0)', duration: 0.9, ease: 'power2.inOut' },
+              0.75
+            ).set(sweepEl, { clearProps: 'clipPath' });
+          }
+          createTargetTrigger(graphEl, tl, reset, {
+            rebuildOnReentry,
+            staggerDelay: 0.3,
+          });
+        });
+        ScrollTrigger.refresh();
       };
 
       runBuild();
@@ -274,6 +315,9 @@ export const HeroBuilderCanvas: React.FC<HeroBuilderCanvasProps> = ({
             </div>
           </div>
         </div>
+
+        {/* ROW 4: GitHub contribution graph (Leaf target; absent when the API isn't configured) */}
+        {contribStatus !== 'error' && <GitHubGraph ref={graphRef} data={contribData} style={initialStyle} />}
 
       </div>
     </section>
